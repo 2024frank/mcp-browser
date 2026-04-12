@@ -1,11 +1,25 @@
 import fs from "node:fs";
 
+import { extractDashboardEventFromCandidate } from "./adapters/agentDetail.js";
 import { runOpenAiListingAdapter } from "./adapters/agentListing.js";
 import { runBrowserListingAdapter } from "./adapters/browser.js";
 import { runIcsAdapter } from "./adapters/ics.js";
 import { runLocalistAdapter } from "./adapters/localist.js";
 import { buildDedupeContext, runDuplicateCompareAgent } from "./agents/agentDedupe.js";
-import { parseJson } from "./utils.js";
+import { parseJson, sleep } from "./utils.js";
+
+function shouldExtractEventDetails(source, result) {
+  if ((result.stagedEvents || []).length > 0) {
+    return false;
+  }
+  if (!(result.candidates || []).length) {
+    return false;
+  }
+  if (source.adapter_key !== "openai_listing_v1") {
+    return false;
+  }
+  return source.adapter_config?.extract_event_details !== false;
+}
 
 const adapters = {
   browser_listing_v1: runBrowserListingAdapter,
@@ -57,6 +71,33 @@ export function createAutomationService(repository, runtimeConfig) {
     try {
       const result = await adapter(source, runtimeConfig);
 
+      const stagedEvents = [...(result.stagedEvents || [])];
+      const baseStagedCount = stagedEvents.length;
+
+      if (shouldExtractEventDetails(source, result)) {
+        const maxDetail = Number(source.adapter_config?.max_detail_extractions ?? 25);
+        let extracted = 0;
+        for (const candidate of result.candidates || []) {
+          if (extracted >= maxDetail) {
+            break;
+          }
+          try {
+            const evt = await extractDashboardEventFromCandidate(
+              source,
+              candidate,
+              runtimeConfig
+            );
+            stagedEvents.push(evt);
+            extracted += 1;
+          } catch (err) {
+            console.error("event detail extraction failed", candidate.event_url, err.message);
+          }
+          await sleep(runtimeConfig.detailExtractionDelayMs ?? 1500);
+        }
+      }
+
+      const detailExtractionsAdded = stagedEvents.length - baseStagedCount;
+
       for (const candidate of result.candidates || []) {
         const upsert = repository.upsertCandidate(source.id, candidate);
         if (upsert.inserted) {
@@ -64,7 +105,7 @@ export function createAutomationService(repository, runtimeConfig) {
         }
       }
 
-      for (const event of result.stagedEvents || []) {
+      for (const event of stagedEvents) {
         let duplicateMatch = repository.findDuplicateMatch(event, source.id);
 
         if (
@@ -115,7 +156,10 @@ export function createAutomationService(repository, runtimeConfig) {
         status: "success",
         new_candidates: newCandidates,
         upserted_events: upsertedEvents,
-        summary: result.summary || {}
+        summary: {
+          ...(result.summary || {}),
+          detail_extractions: detailExtractionsAdded
+        }
       });
       repository.markSourceRunResult(source.id, "success", null, source.poll_interval_minutes);
 
@@ -124,7 +168,10 @@ export function createAutomationService(repository, runtimeConfig) {
         source_id: source.id,
         new_candidates: newCandidates,
         upserted_events: upsertedEvents,
-        summary: result.summary || {}
+        summary: {
+          ...(result.summary || {}),
+          detail_extractions: detailExtractionsAdded
+        }
       };
     } catch (error) {
       repository.finishRun(runId, {

@@ -17,10 +17,12 @@ You do **not** run Playwright inside the automation container for browser source
    - Adapter `openai_listing_v1` → `src/automation/adapters/agentListing.js`.  
    - Output: `event_links[]`, `next_page_url`.
 
-2. **Event detail extractor** (next)  
-   - **Uses MCP** per event URL.  
-   - Add adapter `openai_detail_v1` (same pattern as listing).  
-   - Output: normalized Community Hub–oriented fields.
+2. **Event detail → dashboard format** (implemented)  
+   - **Uses MCP** to open each candidate `event_url`.  
+   - Code: `src/automation/adapters/agentDetail.js` (`extractDashboardEventFromCandidate`).  
+   - Output: `community_hub_payload` matches the dashboard / `schemas/community_hub_submission.schema.json` field names (operator can paste or map into the form).  
+   - Runs automatically after **`openai_listing_v1`** when `extract_event_details` is not `false`, for up to **`max_detail_extractions`** candidates per run.  
+   - Optional env: **`OPENAI_DETAIL_MODEL`**, **`DETAIL_EXTRACTION_DELAY_MS`** (pace between event pages, default 1500).
 
 3. **Duplicate comparator** (implemented, optional)  
    - **No MCP** — compares JSON only: incoming staged event vs recent `events_staging` (other sources) + `community_hub_events`.  

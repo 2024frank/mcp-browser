@@ -40,7 +40,8 @@
     "notes": "Pilot browser source for listing collection and later event detail extraction.",
     "adapter_config": {
       "max_links": 25,
-      "link_pattern": "/\\/event\\//i",
+      "max_detail_extractions": 10,
+      "extract_event_details": true,
       "allowed_hosts": [
         "experienceoberlin.com",
         "www.experienceoberlin.com"

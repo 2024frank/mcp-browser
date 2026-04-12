@@ -24,5 +24,6 @@ export const config = {
   openaiDedupeEnabled: toBool(process.env.OPENAI_DEDUPE_ENABLED, false),
   openaiDedupeModel: process.env.OPENAI_DEDUPE_MODEL || "",
   openaiDedupeContextLimit: Number(process.env.OPENAI_DEDUPE_CONTEXT_LIMIT || 50),
-  openaiDedupeMinConfidence: Number(process.env.OPENAI_DEDUPE_MIN_CONFIDENCE || 0.75)
+  openaiDedupeMinConfidence: Number(process.env.OPENAI_DEDUPE_MIN_CONFIDENCE || 0.75),
+  detailExtractionDelayMs: Number(process.env.DETAIL_EXTRACTION_DELAY_MS || 1500)
 };

@@ -136,6 +136,8 @@ curl 'http://localhost:10000/api/event-candidates?sourceId=<source-id>&limit=25'
 curl 'http://localhost:10000/api/events-staging?sourceId=<source-id>&limit=25'
 ```
 
+Each staged row includes **`community_hub_payload`**: field names align with the Environmental Dashboard submission form (see `schemas/community_hub_submission.schema.json`). Values may omit human-only fields (`submitter_email`, etc.); operators complete those in the UI.
+
 ## Community Hub Records
 
 The service can store known Community Hub events for duplicate checking.
