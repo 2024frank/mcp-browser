@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "start": "npx @playwright/mcp --config playwright-mcp.config.json --port $PORT --host 0.0.0.0 --allowed-hosts '*' --browser chromium --headless --no-sandbox",
+    "start": "npx @playwright/mcp --config playwright-mcp.config.json --port $PORT --host 0.0.0.0 --allowed-hosts '*' --browser chromium --headless",
     "postinstall": "npx playwright install chromium"
   },
   "dependencies": {
