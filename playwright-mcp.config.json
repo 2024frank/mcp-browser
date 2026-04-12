@@ -8,8 +8,24 @@
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--disable-gpu",
-        "--no-zygote"
+        "--no-zygote",
+        "--single-process",
+        "--disable-extensions",
+        "--disable-background-networking",
+        "--disable-sync",
+        "--metrics-recording-only",
+        "--mute-audio"
       ]
+    },
+    "contextOptions": {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      }
     }
+  },
+  "timeouts": {
+    "action": 60000,
+    "navigation": 60000
   }
 }
