@@ -23,6 +23,9 @@
       }
     }
   },
+  "imageResponses": "omit",
+  "sharedBrowserContext": true,
+  "outputDir": "/tmp/playwright-mcp-output",
   "timeouts": {
     "action": 60000,
     "navigation": 60000

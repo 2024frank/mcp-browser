@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "npx playwright install chromium",
-    "start": "npx playwright install chromium && npx @playwright/mcp --config playwright-mcp.config.json --port $PORT --host 0.0.0.0 --allowed-hosts '*'"
+    "start": "npx @playwright/mcp --config playwright-mcp.config.json --port $PORT --host 0.0.0.0 --allowed-hosts '*'"
   },
   "dependencies": {
     "@playwright/mcp": "^0.0.70",

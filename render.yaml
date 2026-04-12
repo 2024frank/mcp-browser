@@ -2,6 +2,6 @@ services:
   - type: web
     name: mcp-browser
     runtime: node
-    plan: free
+    plan: standard
     buildCommand: npm install && npm run build
     startCommand: npm start
