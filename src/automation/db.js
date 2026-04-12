@@ -784,13 +784,14 @@ export function createRepository(config) {
     },
 
     seedSourcesIfEmpty(seedSources) {
-      const count = statements.countTable("sources").get().count;
-      if (count > 0) {
-        return 0;
-      }
-
+      // Insert-if-not-exists by source_id — safe to run on every boot,
+      // adds new sources from the seed file without overwriting existing rows.
       let inserted = 0;
       for (const source of seedSources) {
+        const id = source.source_id || source.id;
+        if (id && this.getSource(id)) {
+          continue; // Already exists — skip
+        }
         this.createSource(source);
         inserted += 1;
       }
