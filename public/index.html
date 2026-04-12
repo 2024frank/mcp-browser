@@ -331,6 +331,96 @@
     .toast-inf { background: #1d4ed8; color:#fff; }
     @keyframes slideUp { from { transform:translateY(12px); opacity:0; } }
 
+    /* ── Poster modal ─────────────────────────────────────── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.55); z-index: 500;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--card); border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.3);
+      width: min(680px, 94vw); max-height: 90vh;
+      overflow-y: auto; padding: 28px 28px 24px;
+    }
+    .modal-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .modal-title { font-size: 17px; font-weight: 700; }
+    .modal-close {
+      background: none; border: none; font-size: 22px; cursor: pointer;
+      color: var(--muted); line-height: 1; padding: 2px 6px; border-radius: 4px;
+    }
+    .modal-close:hover { background: var(--bg); color: var(--text); }
+
+    .input-group { margin-bottom: 14px; }
+    .input-group label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .3px; }
+    .input-group input, .input-group textarea {
+      width: 100%; padding: 9px 12px; border: 1px solid var(--border);
+      border-radius: var(--radius); font-size: 13px; font-family: inherit;
+      background: var(--card); color: var(--text);
+    }
+    .input-group input:focus, .input-group textarea:focus {
+      outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(29,78,216,.12);
+    }
+    .or-divider {
+      text-align: center; color: var(--muted); font-size: 12px; font-weight: 600;
+      margin: 10px 0; position: relative;
+    }
+    .or-divider::before, .or-divider::after {
+      content: ''; position: absolute; top: 50%; width: 42%; height: 1px;
+      background: var(--border);
+    }
+    .or-divider::before { left: 0; }
+    .or-divider::after  { right: 0; }
+
+    .poster-preview {
+      width: 100%; max-height: 260px; object-fit: contain;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      margin-bottom: 14px; display: none;
+    }
+    .poster-preview.visible { display: block; }
+
+    .extract-result {
+      margin-top: 18px; padding: 16px; background: var(--bg);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      display: none;
+    }
+    .extract-result.visible { display: block; }
+    .extract-result-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .extract-result-meta  { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+
+    /* ── Research metrics ─────────────────────────────────── */
+    .metrics-section {
+      padding: 0 24px 40px;
+    }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .metric-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px 18px;
+      box-shadow: var(--shadow);
+    }
+    .metric-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+    .metric-value { font-size: 26px; font-weight: 800; color: var(--text); margin: 4px 0 2px; line-height: 1; }
+    .metric-sub   { font-size: 11px; color: var(--muted); }
+
+    .source-breakdown { margin-top: 14px; }
+    .sb-row {
+      display: flex; align-items: center; gap: 10px; padding: 8px 0;
+      border-bottom: 1px solid var(--border); font-size: 13px;
+    }
+    .sb-row:last-child { border-bottom: none; }
+    .sb-bar-wrap { flex: 1; background: var(--bg); border-radius: 100px; height: 8px; overflow: hidden; }
+    .sb-bar { height: 100%; background: var(--primary); border-radius: 100px; transition: width .4s; }
+    .sb-count { font-weight: 700; min-width: 28px; text-align: right; }
+
     @media (max-width: 880px) {
       .layout      { grid-template-columns: 1fr; }
       .stats-row   { grid-template-columns: repeat(2,1fr); }
@@ -390,12 +480,17 @@
           <h3>Review Queue</h3>
           <span class="queue-count" id="queueCount"></span>
         </div>
-        <div class="tabs">
-          <button class="tab active" data-f="pending"    onclick="setFilter('pending')">Pending</button>
-          <button class="tab"        data-f="duplicate"  onclick="setFilter('duplicate')">Duplicates</button>
-          <button class="tab"        data-f="approved"   onclick="setFilter('approved')">Submitted</button>
-          <button class="tab"        data-f="rejected"   onclick="setFilter('rejected')">Rejected</button>
-          <button class="tab"        data-f="all"        onclick="setFilter('all')">All</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="btn btn-outline btn-sm" onclick="openPosterModal()" title="Extract event info from a poster photo">
+            📸 Extract from Poster
+          </button>
+          <div class="tabs">
+            <button class="tab active" data-f="pending"    onclick="setFilter('pending')">Pending</button>
+            <button class="tab"        data-f="duplicate"  onclick="setFilter('duplicate')">Duplicates</button>
+            <button class="tab"        data-f="approved"   onclick="setFilter('approved')">Submitted</button>
+            <button class="tab"        data-f="rejected"   onclick="setFilter('rejected')">Rejected</button>
+            <button class="tab"        data-f="all"        onclick="setFilter('all')">All</button>
+          </div>
         </div>
       </div>
       <div id="reviewQueue">
@@ -405,6 +500,80 @@
   </main>
 
 </div><!-- /layout -->
+
+<!-- ═══ RESEARCH METRICS ═════════════════════════════════════════════════════ -->
+<div class="metrics-section" id="metricsSection" style="display:none">
+  <div class="panel">
+    <div class="panel-head">
+      <h3>Research Metrics — AI Micro Grant Pilot</h3>
+      <span class="ts" id="metricsUpdated"></span>
+    </div>
+    <div style="padding:18px">
+      <div class="metrics-grid" id="metricsGrid"></div>
+      <div class="source-breakdown" id="sourceBreakdown"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ POSTER MODAL ══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="posterOverlay" onclick="closePosterModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">📸 Extract Event from Poster</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">
+          Research feature — AI Micro Grant Pilot · GPT-4o Vision
+        </div>
+      </div>
+      <button class="modal-close" onclick="closePosterModal()">×</button>
+    </div>
+
+    <!-- URL input -->
+    <div class="input-group">
+      <label>Paste a public image URL</label>
+      <input type="url" id="posterUrl" placeholder="https://example.com/poster.jpg"
+        oninput="previewPosterUrl(this.value)">
+    </div>
+
+    <img id="posterPreview" class="poster-preview" alt="Poster preview">
+
+    <div class="or-divider">or upload a file</div>
+
+    <!-- File upload -->
+    <div class="input-group">
+      <label>Upload poster image</label>
+      <input type="file" id="posterFile" accept="image/*" onchange="handlePosterFile(this)">
+    </div>
+
+    <div class="input-group">
+      <label>Source label (optional)</label>
+      <input type="text" id="posterSourceName" placeholder="e.g. Oberlin Heritage Center flyer">
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-primary" id="extractBtn" onclick="runPosterExtract()">
+        Extract Event Info
+      </button>
+      <button class="btn btn-outline" onclick="closePosterModal()">Cancel</button>
+      <span id="extractSpinner" style="display:none"><span class="spin"></span></span>
+      <span id="extractStatus" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+
+    <!-- Result area -->
+    <div class="extract-result" id="extractResult">
+      <div class="extract-result-title" id="extractTitle"></div>
+      <div class="extract-result-meta" id="extractMeta"></div>
+      <div id="extractFields"></div>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+        <a class="btn btn-hub" href="https://environmentaldashboard.org/calendar/post/new?show-menu-bar=1"
+           target="_blank" rel="noopener">Open Community Hub Form ↗</a>
+        <button class="btn btn-success btn-sm" id="saveToQueueBtn" onclick="savePosterToQueue()">
+          + Save to Review Queue
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div id="toasts"></div>
 
@@ -444,6 +613,7 @@ async function loadAll() {
     renderRuns(runsRes.runs || []);
     allEvents = stagingRes.events_staging || [];
     renderQueue();
+    renderMetrics(allEvents, sourcesRes.sources || []);
     document.getElementById("tsLabel").textContent =
       "Updated " + new Date().toLocaleTimeString();
   } catch (e) {
@@ -879,6 +1049,215 @@ function toast(msg, type = "inf") {
   el.textContent = msg;
   document.getElementById("toasts").appendChild(el);
   setTimeout(() => el.remove(), 3800);
+}
+
+/* ── Research metrics ────────────────────────────────────────────────────── */
+function renderMetrics(events, sources) {
+  const section = document.getElementById("metricsSection");
+  section.style.display = "block";
+
+  const total     = events.length;
+  const dups      = events.filter(e => e.is_duplicate).length;
+  const approved  = events.filter(e => e.review_status === "approved").length;
+  const pending   = events.filter(e => e.review_status === "pending" && !e.is_duplicate).length;
+  const dupRate   = total > 0 ? ((dups / total) * 100).toFixed(1) : "0";
+  const approveRate = total > 0 ? ((approved / total) * 100).toFixed(1) : "0";
+
+  const scopeCounts = {};
+  for (const e of events) {
+    const s = e.hyperlocal_scope || "unknown";
+    scopeCounts[s] = (scopeCounts[s] || 0) + 1;
+  }
+
+  // Metrics cards
+  document.getElementById("metricsGrid").innerHTML = `
+    <div class="metric-card">
+      <div class="metric-label">Total Events Processed</div>
+      <div class="metric-value">${total}</div>
+      <div class="metric-sub">across all sources</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Duplicate Rate</div>
+      <div class="metric-value" style="color:var(--warning)">${dupRate}%</div>
+      <div class="metric-sub">${dups} of ${total} detected as duplicate</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Submitted to Hub</div>
+      <div class="metric-value" style="color:var(--success)">${approved}</div>
+      <div class="metric-sub">${approveRate}% submission rate</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Awaiting Review</div>
+      <div class="metric-value" style="color:var(--warning)">${pending}</div>
+      <div class="metric-sub">events pending human review</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Hyperlocal Events</div>
+      <div class="metric-value">${scopeCounts["hyperlocal"] || 0}</div>
+      <div class="metric-sub">within Oberlin city limits</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Regional Events</div>
+      <div class="metric-value">${(scopeCounts["lorain_county"] || 0) + (scopeCounts["northeast_ohio"] || 0)}</div>
+      <div class="metric-sub">Lorain County + NE Ohio</div>
+    </div>`;
+
+  // Per-source breakdown
+  const bySrc = {};
+  for (const e of events) {
+    const name = e.source_name || "Unknown";
+    if (!bySrc[name]) bySrc[name] = { total: 0, dups: 0, approved: 0 };
+    bySrc[name].total++;
+    if (e.is_duplicate) bySrc[name].dups++;
+    if (e.review_status === "approved") bySrc[name].approved++;
+  }
+  const maxTotal = Math.max(...Object.values(bySrc).map(x => x.total), 1);
+  const rows = Object.entries(bySrc)
+    .sort((a, b) => b[1].total - a[1].total)
+    .map(([name, d]) => `
+      <div class="sb-row">
+        <span style="min-width:180px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(name)}">${esc(name)}</span>
+        <div class="sb-bar-wrap">
+          <div class="sb-bar" style="width:${(d.total/maxTotal*100).toFixed(0)}%"></div>
+        </div>
+        <span class="sb-count">${d.total}</span>
+        <span style="font-size:11px;color:var(--muted);min-width:70px">${d.dups} dup · ${d.approved} sub</span>
+      </div>`).join("");
+
+  document.getElementById("sourceBreakdown").innerHTML = rows
+    ? `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px">Events per Source</div>${rows}`
+    : "";
+
+  document.getElementById("metricsUpdated").textContent =
+    "as of " + new Date().toLocaleTimeString();
+}
+
+/* ── Poster modal ────────────────────────────────────────────────────────── */
+let posterBase64   = null;
+let posterMimeType = null;
+let lastExtracted  = null;
+
+function openPosterModal() {
+  document.getElementById("posterOverlay").classList.add("open");
+  document.getElementById("posterUrl").value = "";
+  document.getElementById("posterFile").value = "";
+  document.getElementById("posterPreview").className = "poster-preview";
+  document.getElementById("extractResult").className = "extract-result";
+  document.getElementById("extractStatus").textContent = "";
+  posterBase64 = null; posterMimeType = null; lastExtracted = null;
+}
+
+function closePosterModal(e) {
+  if (e && e.target !== document.getElementById("posterOverlay")) return;
+  document.getElementById("posterOverlay").classList.remove("open");
+}
+
+function previewPosterUrl(url) {
+  const img = document.getElementById("posterPreview");
+  if (url && url.startsWith("http")) {
+    img.src = url;
+    img.className = "poster-preview visible";
+  } else {
+    img.className = "poster-preview";
+  }
+}
+
+function handlePosterFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  posterMimeType = file.type || "image/jpeg";
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    posterBase64 = dataUrl.split(",")[1];
+    const img = document.getElementById("posterPreview");
+    img.src = dataUrl;
+    img.className = "poster-preview visible";
+    // Clear URL input to avoid confusion
+    document.getElementById("posterUrl").value = "";
+  };
+  reader.readAsDataURL(file);
+}
+
+async function runPosterExtract() {
+  const url        = document.getElementById("posterUrl").value.trim();
+  const sourceName = document.getElementById("posterSourceName").value.trim();
+
+  if (!url && !posterBase64) {
+    toast("Paste an image URL or upload a file first", "err");
+    return;
+  }
+
+  const btn     = document.getElementById("extractBtn");
+  const spinner = document.getElementById("extractSpinner");
+  const status  = document.getElementById("extractStatus");
+
+  btn.disabled = true;
+  spinner.style.display = "inline";
+  status.textContent = "Sending to GPT-4o…";
+  document.getElementById("extractResult").className = "extract-result";
+
+  try {
+    const body = { source_name: sourceName || "Poster Upload" };
+    if (url)          body.image_url    = url;
+    else              { body.image_base64 = posterBase64; body.media_type = posterMimeType; }
+
+    const result = await apiFetch("/api/poster-extract", { method: "POST", body });
+    lastExtracted = result;
+
+    // Render extracted fields
+    const p = result.community_hub_payload || {};
+    document.getElementById("extractTitle").textContent = p.title || "(no title)";
+    document.getElementById("extractMeta").textContent =
+      [fmtDate(p.start_datetime), p.location_or_address, p.organizational_sponsor]
+        .filter(Boolean).join(" · ");
+
+    document.getElementById("extractFields").innerHTML = `
+      <div class="fgrid" style="margin-top:10px">
+        ${f("Title",           p.title,               true)}
+        ${f("Start Date/Time", fmtLong(p.start_datetime))}
+        ${f("End Date/Time",   fmtLong(p.end_datetime))}
+        ${f("Location",        p.location_or_address)}
+        ${f("Sponsor",         p.organizational_sponsor)}
+        ${f("Categories",      (p.event_type_categories||[]).join(", "))}
+        ${ftall("Short Description", p.short_description_for_digital_signs)}
+        ${ftall("Extended Description", p.extended_description_for_web_and_newsletter)}
+        ${f("Contact Email",   p.contact_email)}
+        ${f("Contact Phone",   p.contact_phone)}
+        ${f("Website",         p.organization_website)}
+        ${f("Event Link",      p.event_link)}
+        ${f("Model Used",      result.model)}
+      </div>`;
+
+    document.getElementById("extractResult").className = "extract-result visible";
+    status.textContent = "Extraction complete";
+    toast("Poster extracted successfully", "ok");
+  } catch (err) {
+    status.textContent = "Failed: " + err.message;
+    toast("Extraction failed: " + err.message, "err");
+  } finally {
+    btn.disabled = false;
+    spinner.style.display = "none";
+  }
+}
+
+async function savePosterToQueue() {
+  if (!lastExtracted) return;
+  const url        = document.getElementById("posterUrl").value.trim();
+  const sourceName = document.getElementById("posterSourceName").value.trim();
+
+  try {
+    const body = { source_name: sourceName || "Poster Upload", save: true };
+    if (url)     body.image_url    = url;
+    else         { body.image_base64 = posterBase64; body.media_type = posterMimeType; }
+
+    await apiFetch("/api/poster-extract", { method: "POST", body });
+    toast("Saved to review queue ✓", "ok");
+    closePosterModal();
+    await loadAll();
+  } catch (err) {
+    toast("Save failed: " + err.message, "err");
+  }
 }
 
 /* ── Boot ────────────────────────────────────────────────────────────────── */

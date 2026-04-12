@@ -5,8 +5,9 @@ import express from "express";
 import { config } from "./config.js";
 import { createRepository } from "./db.js";
 import { syncCommunityHubCalendarFromBrowser } from "./adapters/agentHubSnapshot.js";
+import { runPosterExtractionAgent } from "./agents/agentPoster.js";
 import { createAutomationService } from "./service.js";
-import { nowIso } from "./utils.js";
+import { makeId, nowIso } from "./utils.js";
 
 const repository = createRepository(config);
 const automationService = createAutomationService(repository, config);
@@ -144,6 +145,70 @@ app.post("/api/community-hub-events", (request, response) => {
 
   const record = repository.addCommunityHubEvent(body);
   response.status(201).json({ community_hub_event: record });
+});
+
+/**
+ * POST /api/poster-extract
+ * Research feature (AI Micro Grant): extract event info from a poster image.
+ * Body: { image_url: "https://..." }  OR  { image_base64: "...", media_type: "image/jpeg" }
+ * Optional: { source_name: "My Event Poster", save: true }
+ *
+ * Returns the extracted community_hub_payload.
+ * When save=true the event is also upserted into events_staging for review.
+ */
+app.post("/api/poster-extract", async (request, response) => {
+  const body = request.body || {};
+  const { image_url, image_base64, media_type, source_name, save } = body;
+
+  if (!image_url && !image_base64) {
+    response.status(400).json({ error: "Provide image_url or image_base64" });
+    return;
+  }
+  if (!process.env.OPENAI_API_KEY?.trim()) {
+    response.status(503).json({ error: "OPENAI_API_KEY not configured on this service" });
+    return;
+  }
+
+  try {
+    const imageInput = image_url
+      ? { url: image_url }
+      : { base64: image_base64, mediaType: media_type || "image/jpeg" };
+
+    const result = await runPosterExtractionAgent(imageInput, {
+      sourceName: source_name || "Poster Upload"
+    });
+
+    let stagingRecord = null;
+    if (save) {
+      // Ensure a "poster-upload" pseudo-source exists
+      const pseudoSourceId = "poster-upload";
+      if (!repository.getSource(pseudoSourceId)) {
+        repository.createSource({
+          source_id: pseudoSourceId,
+          source_name: source_name || "Poster Upload",
+          source_type: "browser",
+          adapter_key: "openai_listing_v1",
+          is_active: false,
+          notes: "Auto-created for poster extraction results."
+        });
+      }
+      // Use a unique URL so each poster gets its own row
+      const posterUrl = image_url || `poster:${makeId("img")}`;
+      result.staging_event.source_event_url = result.staging_event.source_event_url || posterUrl;
+      const upsert = repository.upsertStagingEvent(pseudoSourceId, null, result.staging_event);
+      stagingRecord = upsert.record;
+    }
+
+    response.json({
+      community_hub_payload: result.community_hub_payload,
+      staging_event: result.staging_event,
+      saved: !!save,
+      staging_record: stagingRecord,
+      model: result.model
+    });
+  } catch (error) {
+    response.status(500).json({ error: error.message });
+  }
 });
 
 app.post("/api/community-hub-events/sync-browser", async (request, response) => {

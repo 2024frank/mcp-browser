@@ -1,7 +1,7 @@
 [
   {
     "source_id": "oberlin-localist",
-    "source_name": "Oberlin College Localist",
+    "source_name": "Oberlin College Events",
     "source_domain": "calendar.oberlin.edu",
     "source_type": "api",
     "listing_url": "https://www.oberlin.edu/events",
@@ -10,17 +10,15 @@
     "adapter_key": "localist_v1",
     "poll_interval_minutes": 360,
     "is_active": true,
-    "attribution_label": "Oberlin College Localist",
-    "notes": "Structured API source for public Oberlin College events.",
+    "attribution_label": "Oberlin College",
+    "notes": "Structured Localist API — returns public events from the college and conservatory calendar.",
     "adapter_config": {
       "require_public": true,
       "days": 365,
       "per_page": 100,
       "max_pages": 5,
       "public_filter_key": "event_public_events",
-      "allowed_public_labels": [
-        "Open to all members of the public"
-      ],
+      "allowed_public_labels": ["Open to all members of the public"],
       "include_when_public_field_missing": false
     }
   },
@@ -28,24 +26,160 @@
     "source_id": "experience-oberlin",
     "source_name": "Experience Oberlin",
     "source_domain": "experienceoberlin.com",
-    "listing_url": "https://experienceoberlin.com/events",
     "source_type": "browser",
+    "listing_url": "https://experienceoberlin.com/events",
     "api_base_url": null,
     "ics_url": null,
     "adapter_key": "openai_listing_v1",
     "poll_interval_minutes": 720,
     "is_active": true,
     "attribution_label": "Experience Oberlin",
-    "community_hub_target": "oberlin-community-calendar",
-    "notes": "Pilot browser source for listing collection and later event detail extraction.",
+    "notes": "Community events aggregator for the Oberlin area. Covers city-level public events.",
     "adapter_config": {
       "max_links": 25,
       "max_detail_extractions": 10,
       "extract_event_details": true,
-      "allowed_hosts": [
-        "experienceoberlin.com",
-        "www.experienceoberlin.com"
-      ]
+      "allowed_hosts": ["experienceoberlin.com", "www.experienceoberlin.com"]
+    }
+  },
+  {
+    "source_id": "oberlin-heritage-center",
+    "source_name": "Oberlin Heritage Center",
+    "source_domain": "oberlinheritagecenter.org",
+    "source_type": "browser",
+    "listing_url": "https://www.oberlinheritagecenter.org/events",
+    "api_base_url": null,
+    "ics_url": null,
+    "adapter_key": "openai_listing_v1",
+    "poll_interval_minutes": 720,
+    "is_active": true,
+    "attribution_label": "Oberlin Heritage Center",
+    "notes": "Heritage Society events — tours, lectures, and historical programs. Verify listing_url matches their current events page.",
+    "adapter_config": {
+      "max_links": 20,
+      "max_detail_extractions": 10,
+      "extract_event_details": true,
+      "allowed_hosts": ["oberlinheritagecenter.org", "www.oberlinheritagecenter.org"]
+    }
+  },
+  {
+    "source_id": "amam",
+    "source_name": "Allen Memorial Art Museum (AMAM)",
+    "source_domain": "amam.oberlin.edu",
+    "source_type": "browser",
+    "listing_url": "https://amam.oberlin.edu/events/",
+    "api_base_url": null,
+    "ics_url": null,
+    "adapter_key": "openai_listing_v1",
+    "poll_interval_minutes": 720,
+    "is_active": true,
+    "attribution_label": "Allen Memorial Art Museum",
+    "notes": "Oberlin College art museum — openings, gallery talks, tours. May also appear on calendar.oberlin.edu.",
+    "adapter_config": {
+      "max_links": 20,
+      "max_detail_extractions": 10,
+      "extract_event_details": true,
+      "allowed_hosts": ["amam.oberlin.edu"]
+    }
+  },
+  {
+    "source_id": "city-of-oberlin",
+    "source_name": "City of Oberlin",
+    "source_domain": "cityofoberlin.com",
+    "source_type": "browser",
+    "listing_url": "https://www.cityofoberlin.com/calendar/",
+    "api_base_url": null,
+    "ics_url": null,
+    "adapter_key": "openai_listing_v1",
+    "poll_interval_minutes": 720,
+    "is_active": true,
+    "attribution_label": "City of Oberlin",
+    "notes": "City government calendar — public meetings, municipal events, and community programs.",
+    "adapter_config": {
+      "max_links": 20,
+      "max_detail_extractions": 10,
+      "extract_event_details": true,
+      "allowed_hosts": ["cityofoberlin.com", "www.cityofoberlin.com"]
+    }
+  },
+  {
+    "source_id": "fava",
+    "source_name": "FAVA (Firelands Association for the Visual Arts)",
+    "source_domain": "favasarts.org",
+    "source_type": "browser",
+    "listing_url": "https://favasarts.org/events/",
+    "api_base_url": null,
+    "ics_url": null,
+    "adapter_key": "openai_listing_v1",
+    "poll_interval_minutes": 720,
+    "is_active": true,
+    "attribution_label": "FAVA",
+    "notes": "Visual arts organization — exhibitions, workshops, artist talks, and community events.",
+    "adapter_config": {
+      "max_links": 20,
+      "max_detail_extractions": 10,
+      "extract_event_details": true,
+      "allowed_hosts": ["favasarts.org", "www.favasarts.org"]
+    }
+  },
+  {
+    "source_id": "apollo-theatre",
+    "source_name": "Apollo Theatre Oberlin",
+    "source_domain": "apollotheatreoberlin.com",
+    "source_type": "browser",
+    "listing_url": "https://www.apollotheatreoberlin.com/",
+    "api_base_url": null,
+    "ics_url": null,
+    "adapter_key": "openai_listing_v1",
+    "poll_interval_minutes": 720,
+    "is_active": true,
+    "attribution_label": "Apollo Theatre",
+    "notes": "Historic community theatre — screenings, live performances, and events. Verify listing_url: the theatre's site URL may differ.",
+    "adapter_config": {
+      "max_links": 20,
+      "max_detail_extractions": 10,
+      "extract_event_details": true,
+      "allowed_hosts": ["apollotheatreoberlin.com", "www.apollotheatreoberlin.com"]
+    }
+  },
+  {
+    "source_id": "oberlin-business-partnership",
+    "source_name": "Oberlin Business Partnership",
+    "source_domain": "oberlinchamber.com",
+    "source_type": "browser",
+    "listing_url": "https://www.oberlinchamber.com/events",
+    "api_base_url": null,
+    "ics_url": null,
+    "adapter_key": "openai_listing_v1",
+    "poll_interval_minutes": 720,
+    "is_active": true,
+    "attribution_label": "Oberlin Business Partnership",
+    "notes": "Local business chamber — networking events, markets, and community business events. Verify listing_url.",
+    "adapter_config": {
+      "max_links": 20,
+      "max_detail_extractions": 10,
+      "extract_event_details": true,
+      "allowed_hosts": ["oberlinchamber.com", "www.oberlinchamber.com"]
+    }
+  },
+  {
+    "source_id": "oberlin-public-library",
+    "source_name": "Oberlin Public Library",
+    "source_domain": "oberlinpubliclibrary.org",
+    "source_type": "browser",
+    "listing_url": "https://www.oberlinpubliclibrary.org/events",
+    "api_base_url": null,
+    "ics_url": null,
+    "adapter_key": "openai_listing_v1",
+    "poll_interval_minutes": 720,
+    "is_active": true,
+    "attribution_label": "Oberlin Public Library",
+    "notes": "Public library — story times, author talks, community programs. Check if they also publish an ICS feed (switch adapter_key to ics_v1 if so).",
+    "adapter_config": {
+      "max_links": 20,
+      "max_detail_extractions": 10,
+      "extract_event_details": true,
+      "allowed_hosts": ["oberlinpubliclibrary.org", "www.oberlinpubliclibrary.org"]
     }
   }
 ]
