@@ -1,0 +1,50 @@
+[
+  {
+    "source_id": "oberlin-localist",
+    "source_name": "Oberlin College Localist",
+    "source_domain": "calendar.oberlin.edu",
+    "source_type": "api",
+    "listing_url": "https://www.oberlin.edu/events",
+    "api_base_url": "https://calendar.oberlin.edu/api/2",
+    "ics_url": null,
+    "adapter_key": "localist_v1",
+    "poll_interval_minutes": 360,
+    "is_active": true,
+    "attribution_label": "Oberlin College Localist",
+    "notes": "Structured API source for public Oberlin College events.",
+    "adapter_config": {
+      "require_public": true,
+      "days": 365,
+      "per_page": 100,
+      "max_pages": 5,
+      "public_filter_key": "event_public_events",
+      "allowed_public_labels": [
+        "Open to all members of the public"
+      ],
+      "include_when_public_field_missing": false
+    }
+  },
+  {
+    "source_id": "experience-oberlin",
+    "source_name": "Experience Oberlin",
+    "source_domain": "experienceoberlin.com",
+    "listing_url": "https://experienceoberlin.com/events",
+    "source_type": "browser",
+    "api_base_url": null,
+    "ics_url": null,
+    "adapter_key": "openai_listing_v1",
+    "poll_interval_minutes": 720,
+    "is_active": true,
+    "attribution_label": "Experience Oberlin",
+    "community_hub_target": "oberlin-community-calendar",
+    "notes": "Pilot browser source for listing collection and later event detail extraction.",
+    "adapter_config": {
+      "max_links": 25,
+      "link_pattern": "/\\/event\\//i",
+      "allowed_hosts": [
+        "experienceoberlin.com",
+        "www.experienceoberlin.com"
+      ]
+    }
+  }
+]

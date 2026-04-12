@@ -1,0 +1,162 @@
+# Automation API
+
+## Overview
+
+The automation service exposes a small HTTP API for:
+
+- adding sources
+- listing sources
+- triggering manual syncs
+- inspecting candidates, staged events, and run history
+
+## Health
+
+```bash
+curl http://localhost:10000/health
+```
+
+## List Sources
+
+```bash
+curl http://localhost:10000/api/sources
+```
+
+## Add a Source
+
+### Localist API source
+
+```bash
+curl -X POST http://localhost:10000/api/sources \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "source_name": "Oberlin College Localist",
+    "source_domain": "calendar.oberlin.edu",
+    "source_type": "api",
+    "listing_url": "https://www.oberlin.edu/events",
+    "api_base_url": "https://calendar.oberlin.edu/api/2",
+    "adapter_key": "localist_v1",
+    "poll_interval_minutes": 360,
+    "is_active": true,
+    "attribution_label": "Oberlin College Localist",
+    "adapter_config": {
+      "require_public": true,
+      "days": 365,
+      "per_page": 100,
+      "max_pages": 5,
+      "public_filter_key": "event_public_events",
+      "allowed_public_labels": ["Open to all members of the public"]
+    }
+  }'
+```
+
+### ICS source
+
+```bash
+curl -X POST http://localhost:10000/api/sources \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "source_name": "Example ICS Source",
+    "source_domain": "example.com",
+    "source_type": "ics",
+    "listing_url": "https://example.com/calendar.ics",
+    "ics_url": "https://example.com/calendar.ics",
+    "poll_interval_minutes": 1440,
+    "is_active": true,
+    "attribution_label": "Example ICS"
+  }'
+```
+
+### Browser source (OpenAI + remote Playwright MCP)
+
+Requires `OPENAI_API_KEY` and `MCP_BROWSER_URL` on the automation service. See `docs/agents-integration.md`.
+
+```bash
+curl -X POST http://localhost:10000/api/sources \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "source_name": "Experience Oberlin",
+    "source_domain": "experienceoberlin.com",
+    "source_type": "browser",
+    "listing_url": "https://experienceoberlin.com/events",
+    "adapter_key": "openai_listing_v1",
+    "poll_interval_minutes": 720,
+    "is_active": true,
+    "attribution_label": "Experience Oberlin",
+    "adapter_config": {
+      "max_links": 25,
+      "allowed_hosts": [
+        "experienceoberlin.com",
+        "www.experienceoberlin.com"
+      ]
+    }
+  }'
+```
+
+Legacy: `browser_listing_v1` uses local Playwright + cheerio (no OpenAI). Prefer `openai_listing_v1` when the listing is dynamic or iframe-heavy.
+
+## Update a Source
+
+```bash
+curl -X PATCH http://localhost:10000/api/sources/<source-id> \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "is_active": false
+  }'
+```
+
+## Run a Source Immediately
+
+```bash
+curl -X POST http://localhost:10000/api/sources/<source-id>/run
+```
+
+## Run All Due Sources
+
+```bash
+curl -X POST http://localhost:10000/api/runs/discover-due-sources
+```
+
+## Inspect Outputs
+
+### Source runs
+
+```bash
+curl 'http://localhost:10000/api/source-runs?sourceId=<source-id>&limit=10'
+```
+
+### Event candidates
+
+```bash
+curl 'http://localhost:10000/api/event-candidates?sourceId=<source-id>&limit=25'
+```
+
+### Staged events
+
+```bash
+curl 'http://localhost:10000/api/events-staging?sourceId=<source-id>&limit=25'
+```
+
+## Community Hub Records
+
+The service can store known Community Hub events for duplicate checking.
+
+### List known Community Hub events
+
+```bash
+curl http://localhost:10000/api/community-hub-events
+```
+
+### Add a known Community Hub event
+
+```bash
+curl -X POST http://localhost:10000/api/community-hub-events \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "title": "Community Clean Up Day",
+    "start_datetime": "2026-04-20T10:00:00-04:00",
+    "end_datetime": "2026-04-20T13:00:00-04:00",
+    "location_or_address": "Central Park",
+    "source_event_url": "https://example.com/event/community-clean-up-day",
+    "community_hub_url": "https://environmentaldashboard.org/calendar/event/community-clean-up-day"
+  }'
+```

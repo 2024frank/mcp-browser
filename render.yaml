@@ -4,4 +4,30 @@ services:
     runtime: node
     plan: standard
     buildCommand: npm install && npm run build
-    startCommand: npm start
+    startCommand: npm run start:browser
+  - type: web
+    name: oberlin-calendar-automation
+    runtime: node
+    plan: standard
+    buildCommand: npm install
+    startCommand: npm run start:automation
+    healthCheckPath: /health
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+      - key: POLLER_ENABLED
+        value: "true"
+      - key: POLLER_INTERVAL_MS
+        value: "60000"
+      - key: AUTO_SEED_SOURCES
+        value: "true"
+      - key: MCP_BROWSER_URL
+        value: https://mcp-browser.onrender.com/mcp
+      - key: OPENAI_AGENT_MODEL
+        value: gpt-4.1
+      - key: OPENAI_API_KEY
+        sync: false
+    disk:
+      name: oberlin-calendar-automation-data
+      mountPath: /var/data
+      sizeGB: 1
