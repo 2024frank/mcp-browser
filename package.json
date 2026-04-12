@@ -1,11 +1,13 @@
 {
- "name": "mcp-browser",
- "version": "1.0.0",
- "type": "module",
- "dependencies": {
-  "@playwright/mcp": "^0.0.70"
- },
- "scripts": {
-  "start": "node server.js"
- }
+  "name": "mcp-browser",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "npx @playwright/mcp --port $PORT --host 0.0.0.0 --allowed-hosts '*' --browser chrome --headless --no-sandbox",
+    "postinstall": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "@playwright/mcp": "^0.0.70",
+    "playwright": "^1.42.0"
+  }
 }
