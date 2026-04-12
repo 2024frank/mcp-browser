@@ -25,6 +25,8 @@ services:
         value: https://mcp-browser.onrender.com/mcp
       - key: OPENAI_AGENT_MODEL
         value: gpt-4.1
+      - key: OPENAI_DEDUPE_ENABLED
+        value: "false"
       - key: OPENAI_API_KEY
         sync: false
     disk:

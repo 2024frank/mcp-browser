@@ -4,6 +4,7 @@ import { runOpenAiListingAdapter } from "./adapters/agentListing.js";
 import { runBrowserListingAdapter } from "./adapters/browser.js";
 import { runIcsAdapter } from "./adapters/ics.js";
 import { runLocalistAdapter } from "./adapters/localist.js";
+import { buildDedupeContext, runDuplicateCompareAgent } from "./agents/agentDedupe.js";
 import { parseJson } from "./utils.js";
 
 const adapters = {
@@ -64,7 +65,32 @@ export function createAutomationService(repository, runtimeConfig) {
       }
 
       for (const event of result.stagedEvents || []) {
-        const duplicateMatch = repository.findDuplicateMatch(event, source.id);
+        let duplicateMatch = repository.findDuplicateMatch(event, source.id);
+
+        if (
+          !duplicateMatch.is_duplicate &&
+          runtimeConfig.openaiDedupeEnabled &&
+          process.env.OPENAI_API_KEY?.trim()
+        ) {
+          try {
+            const ctx = buildDedupeContext(
+              repository,
+              source.id,
+              runtimeConfig.openaiDedupeContextLimit
+            );
+            const llm = await runDuplicateCompareAgent(event, ctx, runtimeConfig);
+            if (llm.applied && llm.is_duplicate) {
+              duplicateMatch = {
+                is_duplicate: true,
+                duplicate_match_url: llm.duplicate_match_url,
+                duplicate_reason: llm.duplicate_reason
+              };
+            }
+          } catch (err) {
+            console.error("duplicate compare agent failed", err.message);
+          }
+        }
+
         event.is_duplicate = duplicateMatch.is_duplicate;
         event.duplicate_match_url = duplicateMatch.duplicate_match_url;
         event.duplicate_reason = duplicateMatch.duplicate_reason;

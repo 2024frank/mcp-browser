@@ -1,16 +1,6 @@
 import OpenAI from "openai";
 
-import { makeFingerprint } from "../utils.js";
-
-function extractJsonObject(text) {
-  if (!text || typeof text !== "string") {
-    throw new Error("empty model output");
-  }
-  const trimmed = text.trim();
-  const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const body = (fence ? fence[1] : trimmed).trim();
-  return JSON.parse(body);
-}
+import { makeFingerprint, parseModelJsonOutput } from "../utils.js";
 
 /**
  * Listing collection via OpenAI Responses API + remote Playwright MCP.
@@ -74,7 +64,7 @@ Output rules:
   const text = response.output_text || "";
   let parsed;
   try {
-    parsed = extractJsonObject(text);
+    parsed = parseModelJsonOutput(text);
   } catch (e) {
     throw new Error(
       `openai_listing_v1: could not parse JSON from model (${e.message}). First 400 chars: ${text.slice(0, 400)}`

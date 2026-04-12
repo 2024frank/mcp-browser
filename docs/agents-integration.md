@@ -10,22 +10,22 @@
 
 You do **not** run Playwright inside the automation container for browser sources. The model uses **remote MCP** to talk to `mcp-browser`.
 
-## Which agents to build (recommended set)
+## The three agents
 
-1. **Listing collector** (implemented here as adapter `openai_listing_v1`)  
-   - Input: `listing_url`, `max_links`, optional `allowed_hosts`.  
-   - Output: `event_links[]`, `next_page_url`.  
-   - Wired: `src/automation/adapters/agentListing.js` → `POST /api/sources/:id/run`.
+1. **Listing collector** (implemented)  
+   - **Uses MCP** (Playwright) for listing pages.  
+   - Adapter `openai_listing_v1` → `src/automation/adapters/agentListing.js`.  
+   - Output: `event_links[]`, `next_page_url`.
 
-2. **Event detail extractor** (next build)  
-   - Input: one `event_url` (+ source metadata).  
-   - Output: normalized fields matching `schemas/normalized_event.schema.json` / Community Hub mapping.  
-   - Integration: add `openai_detail_v1` adapter (same pattern as listing); optionally run in a second pass after candidates exist in DB.
+2. **Event detail extractor** (next)  
+   - **Uses MCP** per event URL.  
+   - Add adapter `openai_detail_v1` (same pattern as listing).  
+   - Output: normalized Community Hub–oriented fields.
 
-3. **Duplicate / review helper** (optional, later)  
-   - Input: two event records (staged vs hub).  
-   - Output: `likely_duplicate`, `reason`, `suggested_action`.  
-   - Integration: batch job or `POST /api/.../review`—keep deterministic rules first, use the agent only for fuzzy cases.
+3. **Duplicate comparator** (implemented, optional)  
+   - **No MCP** — compares JSON only: incoming staged event vs recent `events_staging` (other sources) + `community_hub_events`.  
+   - `src/automation/agents/agentDedupe.js`; runs **after** `findDuplicateMatch` in SQL when `OPENAI_DEDUPE_ENABLED=true`.  
+   - Only overrides to “duplicate” when the model returns `is_duplicate: true`, a matching URL, and `confidence` ≥ `OPENAI_DEDUPE_MIN_CONFIDENCE` (default `0.75`).
 
 Agent Builder is still the best place to **prototype** prompts and tool use. When stable, keep the **same prompts** in code (as in `agentListing.js`) or paste exported SDK snippets next to the adapters.
 
@@ -33,9 +33,13 @@ Agent Builder is still the best place to **prototype** prompts and tool use. Whe
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
-| `OPENAI_API_KEY` | Yes, for browser sources via agent | OpenAI API key. |
-| `MCP_BROWSER_URL` | Yes | Public MCP URL, e.g. `https://<your-mcp-service>.onrender.com/mcp`. |
-| `OPENAI_AGENT_MODEL` | No | Default `gpt-4.1`. |
+| `OPENAI_API_KEY` | Yes, for listing agent + optional dedupe agent | OpenAI API key. |
+| `MCP_BROWSER_URL` | Yes for `openai_listing_v1` | Public MCP URL, e.g. `https://<your-mcp-service>.onrender.com/mcp`. |
+| `OPENAI_AGENT_MODEL` | No | Default `gpt-4.1` for listing. |
+| `OPENAI_DEDUPE_ENABLED` | No | `true` to run duplicate comparator after SQL rules (default off). |
+| `OPENAI_DEDUPE_MODEL` | No | Default `gpt-4.1-mini` (cheap; override for quality). |
+| `OPENAI_DEDUPE_CONTEXT_LIMIT` | No | Max rows per bucket sent to the model (default `50`). |
+| `OPENAI_DEDUPE_MIN_CONFIDENCE` | No | Min model `confidence` to mark duplicate (default `0.75`). |
 
 Legacy alias: `PLAYWRIGHT_MCP_URL` is accepted if `MCP_BROWSER_URL` is unset.
 
