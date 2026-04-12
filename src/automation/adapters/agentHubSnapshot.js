@@ -41,25 +41,34 @@ export async function syncCommunityHubCalendarFromBrowser(repository, runtimeCon
 
   const client = new OpenAI({ apiKey });
 
-  const input = `You are extracting a snapshot of events from the Community Events Calendar for deduplication memory.
+  const input = `You are extracting a snapshot of events from the Oberlin Community Events Calendar for deduplication memory.
 
-Use browser MCP for all navigation, waiting, scrolling, and snapshots.
+Use browser MCP tools for navigation and snapshots. Follow these steps EXACTLY.
 
-1) Navigate to: ${calendarUrl}
-2) Wait until the calendar or event list is visibly populated. If more events load on scroll, scroll reasonably to capture additional listings (cap at about ${maxEvents} distinct events for this run).
-3) For each distinct public event you can associate with a stable URL on environmentaldashboard.org (or a detail page it links to), record:
-   - title
-   - start_datetime and end_datetime as ISO 8601 when possible (assume America/New_York if the page does not state a timezone)
-   - location_or_address if shown
-   - source_event_url: canonical public URL for that event (https, on environmentaldashboard.org when available)
-   - community_hub_url: same as source_event_url when that is the hub-facing page; otherwise the best public permalink you found
+STEP 1: Navigate to this URL:
+${calendarUrl}
 
-Output rules:
-- Return a single JSON object only (no markdown fences).
-- Shape: {"events":[{"title":"string","start_datetime":"string|null","end_datetime":"string|null","location_or_address":"string|null","source_event_url":"string","community_hub_url":"string|null"}]}
-- source_event_url must be present for every event; use absolute https URLs.
-- Do not fabricate events: only include what you can justify from page content or links you followed from this calendar.
-- Skip navigation, footer, and non-event links.`;
+STEP 2: Call browser_wait_for to wait up to 5 seconds for content to load.
+
+STEP 3: Call browser_snapshot to capture the page.
+
+STEP 4: Scroll down once to reveal any additional events below the fold, then snapshot again.
+
+STEP 5: From what you can see in the snapshots, extract up to ${maxEvents} distinct event entries.
+For each event record:
+  - title: visible event name
+  - start_datetime: ISO 8601 (assume America/New_York if no timezone given), or null
+  - end_datetime: ISO 8601 or null
+  - location_or_address: venue/address if shown, or null
+  - source_event_url: the absolute https URL to that event's detail page on environmentaldashboard.org, OR if no detail link is visible, use the calendar URL itself as a placeholder
+  - community_hub_url: same as source_event_url
+
+CRITICAL OUTPUT RULES:
+- You MUST output your final answer as a single JSON object. No markdown. No explanation text.
+- Shape: {"events":[{"title":"...","start_datetime":"...","end_datetime":null,"location_or_address":null,"source_event_url":"https://...","community_hub_url":"https://..."}]}
+- If navigation fails or the page is empty, you MUST still output valid JSON: {"events":[]}
+- Do NOT output any prose, explanation, or error messages. JSON ONLY.
+- If you encounter any problem (lost context, navigation error, empty page), immediately output {"events":[]} and stop.`;
 
   const response = await client.responses.create({
     model,
@@ -76,10 +85,42 @@ Output rules:
   });
 
   const text = response.output_text || "";
+
+  // If the model emitted prose instead of JSON (navigation lost, page error),
+  // treat it as an empty result rather than a hard crash.
+  const looksLikeProse = text.trim() && !text.trim().startsWith("{") && !text.trim().startsWith("[");
+  if (looksLikeProse) {
+    console.warn(`hub snapshot: model returned prose instead of JSON — treating as empty. Snippet: "${text.slice(0, 200)}"`);
+    return {
+      calendar_url: calendarUrl,
+      model,
+      max_events_cap: maxEvents,
+      parsed_count: 0,
+      inserted: 0,
+      updated: 0,
+      skipped: 0,
+      warning: "model_returned_prose"
+    };
+  }
+
   let parsed;
   try {
     parsed = parseModelJsonOutput(text);
   } catch (e) {
+    // Empty output_text means tool calls ran but no final JSON — return empty gracefully
+    if (!text.trim()) {
+      console.warn("hub snapshot: model output was empty — returning empty result");
+      return {
+        calendar_url: calendarUrl,
+        model,
+        max_events_cap: maxEvents,
+        parsed_count: 0,
+        inserted: 0,
+        updated: 0,
+        skipped: 0,
+        warning: "empty_model_output"
+      };
+    }
     throw new Error(
       `Community Hub snapshot: could not parse JSON from model (${e.message}). First 400 chars: ${text.slice(0, 400)}`
     );

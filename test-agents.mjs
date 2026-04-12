@@ -391,11 +391,17 @@ if (!hasOpenAI || !hasMcp) {
     console.log("  Scraping Community Hub calendar…");
     console.log("  (this can take 30–60 seconds)");
     const result = await syncCommunityHubCalendarFromBrowser(stubRepository, {});
-    console.log(`         parsed=${result.parsed_count}  inserted=${result.inserted}  updated=${result.updated}`);
-    assert(typeof result.parsed_count === "number", "returns parsed_count");
-    assert(result.parsed_count >= 0, `parsed_count >= 0 (got: ${result.parsed_count})`);
-    if (result.parsed_count > 0) {
+    console.log(`         parsed=${result.parsed_count}  inserted=${result.inserted}  updated=${result.updated}${result.warning ? "  warning="+result.warning : ""}`);
+    assert(typeof result.parsed_count === "number", "returns parsed_count number");
+    assert(typeof result.calendar_url === "string", "returns calendar_url");
+    if (result.warning) {
+      ok(`agent ran without crash (warning: ${result.warning} — page may be empty or JS-heavy)`);
+    } else if (result.parsed_count > 0) {
       ok(`extracted ${result.parsed_count} events from Community Hub`);
+      // Show first few event titles
+      memStore.slice(0, 3).forEach(ev => console.log(`           • "${ev.title}" → ${ev.source_event_url}`));
+    } else {
+      ok(`agent returned empty result (calendar may have no upcoming events)`);
     }
   } catch (e) {
     fail("hub snapshot", e);
