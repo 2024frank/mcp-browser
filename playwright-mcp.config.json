@@ -6,14 +6,7 @@
       "args": [
         "--no-sandbox",
         "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        "--no-zygote",
-        "--disable-extensions",
-        "--disable-background-networking",
-        "--disable-sync",
-        "--metrics-recording-only",
-        "--mute-audio"
+        "--disable-dev-shm-usage"
       ]
     },
     "contextOptions": {
@@ -23,9 +16,6 @@
       }
     }
   },
-  "imageResponses": "omit",
-  "sharedBrowserContext": true,
-  "outputDir": "/tmp/playwright-mcp-output",
   "timeouts": {
     "action": 60000,
     "navigation": 60000
