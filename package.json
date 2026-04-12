@@ -1,0 +1,11 @@
+{
+ "name": "mcp-browser",
+ "version": "1.0.0",
+ "type": "module",
+ "dependencies": {
+  "@playwright/mcp": "^0.0.70"
+ },
+ "scripts": {
+  "start": "node server.js"
+ }
+}
