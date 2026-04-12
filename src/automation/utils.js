@@ -120,13 +120,57 @@ export function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Parse JSON from model output (plain or ```json fenced). */
+/**
+ * Parse JSON from model output that may include:
+ *  - plain JSON object/array
+ *  - ```json ... ``` fenced block
+ *  - trailing prose after the JSON closes  (e.g. "Here is the result:\n{...}\nLet me know...")
+ *  - leading prose before the JSON starts
+ */
 export function parseModelJsonOutput(text) {
   if (!text || typeof text !== "string") {
     throw new Error("empty model output");
   }
+
+  // 1. Strip ```json ... ``` fences
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fence) {
+    return JSON.parse(fence[1].trim());
+  }
+
+  // 2. Try the whole text first (common case — model returns clean JSON)
   const trimmed = text.trim();
-  const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const body = (fence ? fence[1] : trimmed).trim();
-  return JSON.parse(body);
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    // fall through
+  }
+
+  // 3. Extract the first complete JSON object or array by tracking brace depth.
+  //    Handles trailing prose, leading explanation, multi-line text, etc.
+  const start = trimmed.search(/[{[]/);
+  if (start === -1) throw new Error("no JSON object or array found in model output");
+
+  const opener = trimmed[start];
+  const closer = opener === "{" ? "}" : "]";
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = start; i < trimmed.length; i++) {
+    const ch = trimmed[i];
+    if (escape)            { escape = false; continue; }
+    if (ch === "\\" && inString) { escape = true; continue; }
+    if (ch === '"')        { inString = !inString; continue; }
+    if (inString)          continue;
+    if (ch === opener)     depth++;
+    else if (ch === closer) {
+      depth--;
+      if (depth === 0) {
+        return JSON.parse(trimmed.slice(start, i + 1));
+      }
+    }
+  }
+
+  throw new Error("unterminated JSON in model output");
 }

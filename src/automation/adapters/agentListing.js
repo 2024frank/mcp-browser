@@ -66,8 +66,22 @@ Output rules:
   try {
     parsed = parseModelJsonOutput(text);
   } catch (e) {
+    // Collect any text found in output items when output_text is empty
+    const outputItems = Array.isArray(response.output) ? response.output : [];
+    const itemsSummary = outputItems
+      .map((item, i) => {
+        if (item.type === "message") {
+          const content = Array.isArray(item.content)
+            ? item.content.map(c => c.text || c.type || "").join(" ")
+            : String(item.content || "");
+          return `[${i}:message] ${content.slice(0, 200)}`;
+        }
+        return `[${i}:${item.type}]`;
+      })
+      .join(" | ");
     throw new Error(
-      `openai_listing_v1: could not parse JSON from model (${e.message}). First 400 chars: ${text.slice(0, 400)}`
+      `openai_listing_v1: could not parse JSON from model (${e.message}). ` +
+      `output_text="${text.slice(0, 400)}" output_items="${itemsSummary.slice(0, 400)}"`
     );
   }
 
