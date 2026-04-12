@@ -25,5 +25,10 @@ export const config = {
   openaiDedupeModel: process.env.OPENAI_DEDUPE_MODEL || "",
   openaiDedupeContextLimit: Number(process.env.OPENAI_DEDUPE_CONTEXT_LIMIT || 50),
   openaiDedupeMinConfidence: Number(process.env.OPENAI_DEDUPE_MIN_CONFIDENCE || 0.75),
-  detailExtractionDelayMs: Number(process.env.DETAIL_EXTRACTION_DELAY_MS || 1500)
+  detailExtractionDelayMs: Number(process.env.DETAIL_EXTRACTION_DELAY_MS || 1500),
+  communityHubCalendarUrl:
+    process.env.COMMUNITY_HUB_CALENDAR_URL ||
+    "https://environmentaldashboard.org/calendar?show-menu-bar=1",
+  communityHubSnapshotMaxEvents: Number(process.env.COMMUNITY_HUB_SNAPSHOT_MAX_EVENTS || 200),
+  communityHubSnapshotModel: process.env.COMMUNITY_HUB_SNAPSHOT_MODEL || ""
 };

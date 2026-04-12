@@ -1,1 +1,7 @@
+.env
 node_modules/
+.playwright-cli/
+data/runtime/
+*.db
+*.db-shm
+*.db-wal

@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NormalizedEvent",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "organizational_sponsor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "event_type_categories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "start_datetime": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "end_datetime": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "location_type": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "In-Person",
+        "Online",
+        "Both",
+        "Neither",
+        null
+      ]
+    },
+    "location_or_address": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "room_number": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "event_link": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "short_description": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "extended_description": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "artwork_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_domain": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_listing_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_event_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "is_duplicate": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "duplicate_match_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "duplicate_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "confidence": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "review_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ]
+    }
+  },
+  "required": [
+    "title",
+    "organizational_sponsor",
+    "event_type_categories",
+    "start_datetime",
+    "end_datetime",
+    "location_type",
+    "location_or_address",
+    "room_number",
+    "event_link",
+    "short_description",
+    "extended_description",
+    "artwork_url",
+    "source_name",
+    "source_domain",
+    "source_listing_url",
+    "source_event_url",
+    "is_duplicate",
+    "duplicate_match_url",
+    "duplicate_reason",
+    "confidence",
+    "review_status"
+  ]
+}

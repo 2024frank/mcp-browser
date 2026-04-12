@@ -1,11 +1,13 @@
 import fs from "node:fs";
 
+import { syncCommunityHubCalendarFromBrowser } from "./adapters/agentHubSnapshot.js";
 import { extractDashboardEventFromCandidate } from "./adapters/agentDetail.js";
 import { runOpenAiListingAdapter } from "./adapters/agentListing.js";
 import { runBrowserListingAdapter } from "./adapters/browser.js";
 import { runIcsAdapter } from "./adapters/ics.js";
 import { runLocalistAdapter } from "./adapters/localist.js";
 import { buildDedupeContext, runDuplicateCompareAgent } from "./agents/agentDedupe.js";
+import { runHyperlocalAgent } from "./agents/agentHyperlocal.js";
 import { parseJson, sleep } from "./utils.js";
 
 function shouldExtractEventDetails(source, result) {
@@ -28,8 +30,40 @@ const adapters = {
   localist_v1: runLocalistAdapter
 };
 
+// How often the hub snapshot is refreshed (default 4 h). Override via HUB_SYNC_INTERVAL_MS.
+const HUB_SYNC_INTERVAL_MS = Number(process.env.HUB_SYNC_INTERVAL_MS || 4 * 60 * 60 * 1000);
+
 export function createAutomationService(repository, runtimeConfig) {
   const runningSources = new Set();
+  let hubLastSyncedAt = null; // in-process memory — resets on restart (intentional)
+
+  /**
+   * Refresh the community_hub_events table from the live calendar page.
+   * Rate-limited: won't fire again until HUB_SYNC_INTERVAL_MS has elapsed.
+   * Silently skips when OPENAI_API_KEY or MCP_BROWSER_URL is absent.
+   */
+  async function syncHubIfStale() {
+    const apiKey = process.env.OPENAI_API_KEY?.trim();
+    const mcpUrl = (process.env.MCP_BROWSER_URL || process.env.PLAYWRIGHT_MCP_URL || "").trim();
+    if (!apiKey || !mcpUrl) {
+      return false;
+    }
+    const now = Date.now();
+    if (hubLastSyncedAt && now - hubLastSyncedAt < HUB_SYNC_INTERVAL_MS) {
+      return false; // Still fresh
+    }
+    try {
+      const result = await syncCommunityHubCalendarFromBrowser(repository, runtimeConfig);
+      hubLastSyncedAt = Date.now();
+      console.log(
+        `hub sync complete — parsed ${result.parsed_count} events (inserted ${result.inserted}, updated ${result.updated})`
+      );
+      return true;
+    } catch (err) {
+      console.error("hub auto-sync failed:", err.message);
+      return false;
+    }
+  }
 
   function loadSeedSources() {
     try {
@@ -106,6 +140,19 @@ export function createAutomationService(repository, runtimeConfig) {
       }
 
       for (const event of stagedEvents) {
+        // --- Agent 4: Hyperlocal classifier (no browser — pure text, cheap) ---
+        if (process.env.OPENAI_API_KEY?.trim()) {
+          try {
+            const geo = await runHyperlocalAgent(event, runtimeConfig);
+            event.hyperlocal_scope = geo.scope;
+            event.geographic_tags = geo.geographic_tags;
+          } catch (err) {
+            console.error("hyperlocal agent failed for", event.title, err.message);
+            event.hyperlocal_scope = null;
+            event.geographic_tags = [];
+          }
+        }
+
         let duplicateMatch = repository.findDuplicateMatch(event, source.id);
 
         if (
@@ -189,6 +236,9 @@ export function createAutomationService(repository, runtimeConfig) {
   }
 
   async function processDueSources() {
+    // Refresh the hub snapshot first so dedupe memory is always current
+    await syncHubIfStale();
+
     const dueSources = repository.getDueSources(3);
     const results = [];
     for (const source of dueSources) {

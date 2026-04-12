@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CommunityHubSubmission",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "post_type": {
+      "type": "string",
+      "enum": [
+        "Event",
+        "Announcement"
+      ]
+    },
+    "submitter_email": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "newsletter_opt_in": {
+      "type": "boolean"
+    },
+    "guidelines_acknowledged": {
+      "type": "boolean"
+    },
+    "contact_email": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "contact_phone": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "organization_website": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "organizational_sponsor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "event_type_categories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "start_datetime": {
+      "type": "string"
+    },
+    "end_datetime": {
+      "type": "string"
+    },
+    "location_type": {
+      "type": "string",
+      "enum": [
+        "In-Person",
+        "Online",
+        "Both",
+        "Neither"
+      ]
+    },
+    "location_or_address": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "room_number": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "event_link": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "short_description_for_digital_signs": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "extended_description_for_web_and_newsletter": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "artwork_upload_or_gallery": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "display_target": {
+      "type": "string",
+      "enum": [
+        "All Public Screens",
+        "School Screens Only",
+        "School & Public Screens",
+        "Choose Specific Screens"
+      ]
+    },
+    "source_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_event_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "is_duplicate": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "duplicate_match_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "post_type",
+    "submitter_email",
+    "newsletter_opt_in",
+    "guidelines_acknowledged",
+    "contact_email",
+    "contact_phone",
+    "organization_website",
+    "title",
+    "organizational_sponsor",
+    "event_type_categories",
+    "start_datetime",
+    "end_datetime",
+    "location_type",
+    "location_or_address",
+    "room_number",
+    "event_link",
+    "short_description_for_digital_signs",
+    "extended_description_for_web_and_newsletter",
+    "artwork_upload_or_gallery",
+    "display_target",
+    "source_name",
+    "source_event_url",
+    "is_duplicate",
+    "duplicate_match_url"
+  ]
+}
