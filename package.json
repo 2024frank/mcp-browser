@@ -7,7 +7,8 @@
     "build:browser": "npx playwright install chromium",
     "start": "npm run start:browser",
     "start:browser": "npx playwright install chromium && npx @playwright/mcp --config playwright-mcp.config.json --port $PORT --host 0.0.0.0 --allowed-hosts '*'",
-    "start:automation": "node src/automation/server.js"
+    "start:automation": "node src/automation/server.js",
+    "test:smoke": "node scripts/test-automation-smoke.mjs"
   },
   "dependencies": {
     "@playwright/mcp": "^0.0.70",
