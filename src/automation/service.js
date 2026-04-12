@@ -8,7 +8,22 @@ import { runIcsAdapter } from "./adapters/ics.js";
 import { runLocalistAdapter } from "./adapters/localist.js";
 import { buildDedupeContext, runDuplicateCompareAgent } from "./agents/agentDedupe.js";
 import { runHyperlocalAgent } from "./agents/agentHyperlocal.js";
-import { parseJson, sleep } from "./utils.js";
+import { parseJson, nowIso, sleep } from "./utils.js";
+
+/* ── Agent activity log ──────────────────────────────────────────────────────
+ * In-memory ring buffer of recent agent activity (last 200 entries).
+ * Cleared on restart; exposed via GET /api/agent-activity so the dashboard
+ * can show live status without SSE complexity.
+ */
+const ACTIVITY_LOG_MAX = 200;
+export const agentActivityLog = [];
+
+function logActivity(entry) {
+  agentActivityLog.push({ ts: nowIso(), ...entry });
+  if (agentActivityLog.length > ACTIVITY_LOG_MAX) {
+    agentActivityLog.splice(0, agentActivityLog.length - ACTIVITY_LOG_MAX);
+  }
+}
 
 function shouldExtractEventDetails(source, result) {
   if ((result.stagedEvents || []).length > 0) {
@@ -102,8 +117,12 @@ export function createAutomationService(repository, runtimeConfig) {
     let newCandidates = 0;
     let upsertedEvents = 0;
 
+    logActivity({ type: "source_start", source: source.source_name, adapter: source.adapter_key });
+
     try {
       const result = await adapter(source, runtimeConfig);
+      const candidateCount = (result.candidates || []).length;
+      logActivity({ type: "listing_done", source: source.source_name, candidates: candidateCount });
 
       const stagedEvents = [...(result.stagedEvents || [])];
       const baseStagedCount = stagedEvents.length;
@@ -115,6 +134,7 @@ export function createAutomationService(repository, runtimeConfig) {
           if (extracted >= maxDetail) {
             break;
           }
+          logActivity({ type: "detail_start", source: source.source_name, url: candidate.event_url, title: candidate.title_hint || null });
           try {
             const evt = await extractDashboardEventFromCandidate(
               source,
@@ -123,7 +143,9 @@ export function createAutomationService(repository, runtimeConfig) {
             );
             stagedEvents.push(evt);
             extracted += 1;
+            logActivity({ type: "detail_done", source: source.source_name, title: evt.title || candidate.title_hint });
           } catch (err) {
+            logActivity({ type: "detail_error", source: source.source_name, url: candidate.event_url, error: err.message });
             console.error("event detail extraction failed", candidate.event_url, err.message);
           }
           await sleep(runtimeConfig.detailExtractionDelayMs ?? 1500);
@@ -140,14 +162,17 @@ export function createAutomationService(repository, runtimeConfig) {
       }
 
       for (const event of stagedEvents) {
-        // --- Agent 4: Hyperlocal classifier (no browser — pure text, cheap) ---
+        // --- Agent 3: Hyperlocal classifier (no browser — pure text, cheap) ---
         if (process.env.OPENAI_API_KEY?.trim()) {
+          logActivity({ type: "hyperlocal_start", title: event.title });
           try {
             const geo = await runHyperlocalAgent(event, runtimeConfig);
             event.hyperlocal_scope = geo.scope;
             event.geographic_tags = geo.geographic_tags;
+            logActivity({ type: "hyperlocal_done", title: event.title, scope: geo.scope });
           } catch (err) {
             console.error("hyperlocal agent failed for", event.title, err.message);
+            logActivity({ type: "hyperlocal_error", title: event.title, error: err.message });
             event.hyperlocal_scope = null;
             event.geographic_tags = [];
           }
@@ -160,6 +185,7 @@ export function createAutomationService(repository, runtimeConfig) {
           runtimeConfig.openaiDedupeEnabled &&
           process.env.OPENAI_API_KEY?.trim()
         ) {
+          logActivity({ type: "dedupe_start", title: event.title });
           try {
             const ctx = buildDedupeContext(
               repository,
@@ -173,8 +199,12 @@ export function createAutomationService(repository, runtimeConfig) {
                 duplicate_match_url: llm.duplicate_match_url,
                 duplicate_reason: llm.duplicate_reason
               };
+              logActivity({ type: "dedupe_done", title: event.title, is_duplicate: true, reason: llm.duplicate_reason });
+            } else {
+              logActivity({ type: "dedupe_done", title: event.title, is_duplicate: false });
             }
           } catch (err) {
+            logActivity({ type: "dedupe_error", title: event.title, error: err.message });
             console.error("duplicate compare agent failed", err.message);
           }
         }
@@ -199,6 +229,8 @@ export function createAutomationService(repository, runtimeConfig) {
         }
       }
 
+      logActivity({ type: "source_done", source: source.source_name, new_candidates: newCandidates, upserted_events: upsertedEvents });
+
       repository.finishRun(runId, {
         status: "success",
         new_candidates: newCandidates,
@@ -221,6 +253,7 @@ export function createAutomationService(repository, runtimeConfig) {
         }
       };
     } catch (error) {
+      logActivity({ type: "source_error", source: source.source_name, error: error.message });
       repository.finishRun(runId, {
         status: "failed",
         new_candidates: newCandidates,

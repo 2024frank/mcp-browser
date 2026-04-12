@@ -47,14 +47,14 @@
     "source_name": "Oberlin Heritage Center",
     "source_domain": "oberlinheritagecenter.org",
     "source_type": "browser",
-    "listing_url": "https://www.oberlinheritagecenter.org/events",
+    "listing_url": "https://www.oberlinheritagecenter.org/eventsnews",
     "api_base_url": null,
     "ics_url": null,
     "adapter_key": "openai_listing_v1",
     "poll_interval_minutes": 720,
     "is_active": true,
     "attribution_label": "Oberlin Heritage Center",
-    "notes": "Heritage Society events — tours, lectures, and historical programs. Verify listing_url matches their current events page.",
+    "notes": "Heritage Society events — tours, lectures, and historical programs.",
     "adapter_config": {
       "max_links": 20,
       "max_detail_extractions": 10,
@@ -87,7 +87,7 @@
     "source_name": "City of Oberlin",
     "source_domain": "cityofoberlin.com",
     "source_type": "browser",
-    "listing_url": "https://www.cityofoberlin.com/calendar/",
+    "listing_url": "https://cityofoberlin.com/event/",
     "api_base_url": null,
     "ics_url": null,
     "adapter_key": "openai_listing_v1",
@@ -105,9 +105,9 @@
   {
     "source_id": "fava",
     "source_name": "FAVA (Firelands Association for the Visual Arts)",
-    "source_domain": "favasarts.org",
+    "source_domain": "favagallery.org",
     "source_type": "browser",
-    "listing_url": "https://favasarts.org/events/",
+    "listing_url": "https://www.favagallery.org/calendar",
     "api_base_url": null,
     "ics_url": null,
     "adapter_key": "openai_listing_v1",
@@ -119,55 +119,55 @@
       "max_links": 20,
       "max_detail_extractions": 10,
       "extract_event_details": true,
-      "allowed_hosts": ["favasarts.org", "www.favasarts.org"]
+      "allowed_hosts": ["favagallery.org", "www.favagallery.org"]
     }
   },
   {
     "source_id": "apollo-theatre",
     "source_name": "Apollo Theatre Oberlin",
-    "source_domain": "apollotheatreoberlin.com",
+    "source_domain": "clevelandcinemas.com",
     "source_type": "browser",
-    "listing_url": "https://www.apollotheatreoberlin.com/",
+    "listing_url": "https://www.clevelandcinemas.com/our-locations/x03gq-apollo-theatre/",
     "api_base_url": null,
     "ics_url": null,
     "adapter_key": "openai_listing_v1",
     "poll_interval_minutes": 720,
-    "is_active": true,
+    "is_active": false,
     "attribution_label": "Apollo Theatre",
-    "notes": "Historic community theatre — screenings, live performances, and events. Verify listing_url: the theatre's site URL may differ.",
+    "notes": "Historic community theatre — screenings, live performances, and events. is_active=false: site is on clevelandcinemas.com, verify scrapeability before enabling.",
     "adapter_config": {
       "max_links": 20,
       "max_detail_extractions": 10,
       "extract_event_details": true,
-      "allowed_hosts": ["apollotheatreoberlin.com", "www.apollotheatreoberlin.com"]
+      "allowed_hosts": ["clevelandcinemas.com", "www.clevelandcinemas.com"]
     }
   },
   {
     "source_id": "oberlin-business-partnership",
     "source_name": "Oberlin Business Partnership",
-    "source_domain": "oberlinchamber.com",
+    "source_domain": "oberlinbusinesspartnership.com",
     "source_type": "browser",
-    "listing_url": "https://www.oberlinchamber.com/events",
+    "listing_url": "https://www.oberlinbusinesspartnership.com/",
     "api_base_url": null,
     "ics_url": null,
     "adapter_key": "openai_listing_v1",
     "poll_interval_minutes": 720,
     "is_active": true,
     "attribution_label": "Oberlin Business Partnership",
-    "notes": "Local business chamber — networking events, markets, and community business events. Verify listing_url.",
+    "notes": "Local business chamber — networking events, markets, and community business events.",
     "adapter_config": {
       "max_links": 20,
       "max_detail_extractions": 10,
       "extract_event_details": true,
-      "allowed_hosts": ["oberlinchamber.com", "www.oberlinchamber.com"]
+      "allowed_hosts": ["oberlinbusinesspartnership.com", "www.oberlinbusinesspartnership.com"]
     }
   },
   {
     "source_id": "oberlin-public-library",
     "source_name": "Oberlin Public Library",
-    "source_domain": "oberlinpubliclibrary.org",
+    "source_domain": "oberlinlibrary.org",
     "source_type": "browser",
-    "listing_url": "https://www.oberlinpubliclibrary.org/events",
+    "listing_url": "https://www.oberlinlibrary.org/events",
     "api_base_url": null,
     "ics_url": null,
     "adapter_key": "openai_listing_v1",
@@ -179,7 +179,7 @@
       "max_links": 20,
       "max_detail_extractions": 10,
       "extract_event_details": true,
-      "allowed_hosts": ["oberlinpubliclibrary.org", "www.oberlinpubliclibrary.org"]
+      "allowed_hosts": ["oberlinlibrary.org", "www.oberlinlibrary.org"]
     }
   }
 ]

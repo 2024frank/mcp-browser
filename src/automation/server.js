@@ -6,7 +6,7 @@ import { config } from "./config.js";
 import { createRepository } from "./db.js";
 import { syncCommunityHubCalendarFromBrowser } from "./adapters/agentHubSnapshot.js";
 import { runPosterExtractionAgent } from "./agents/agentPoster.js";
-import { createAutomationService } from "./service.js";
+import { createAutomationService, agentActivityLog } from "./service.js";
 import { makeId, nowIso } from "./utils.js";
 
 const repository = createRepository(config);
@@ -114,7 +114,26 @@ app.get("/api/events-staging", (request, response) => {
 });
 
 app.patch("/api/events-staging/:id", (request, response) => {
-  const { review_status } = request.body || {};
+  const body = request.body || {};
+
+  // Field-edit mode — body contains editable content fields
+  const editableFields = ["title","organizational_sponsor","start_datetime","end_datetime",
+    "location_type","location_or_address","room_number","event_link",
+    "short_description","extended_description","artwork_url"];
+  const hasFields = editableFields.some(k => k in body);
+
+  if (hasFields) {
+    const updated = repository.patchStagingFields(request.params.id, body);
+    if (!updated) {
+      response.status(404).json({ error: "Staging event not found" });
+      return;
+    }
+    response.json({ event: updated });
+    return;
+  }
+
+  // Review-status mode
+  const { review_status } = body;
   const valid = ["pending", "approved", "rejected"];
   if (!valid.includes(review_status)) {
     response.status(400).json({ error: `review_status must be one of: ${valid.join(", ")}` });
@@ -126,6 +145,10 @@ app.patch("/api/events-staging/:id", (request, response) => {
     return;
   }
   response.json({ event: updated });
+});
+
+app.get("/api/agent-activity", (_request, response) => {
+  response.json({ activity: [...agentActivityLog].reverse() });
 });
 
 app.get("/api/community-hub-events", (request, response) => {

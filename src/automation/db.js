@@ -417,6 +417,22 @@ export function createRepository(config) {
     getStagingById: db.prepare(`SELECT * FROM events_staging WHERE id = ?`),
     patchStagingReviewStatus: db.prepare(`
       UPDATE events_staging SET review_status = @review_status, updated_at = @updated_at WHERE id = @id
+    `),
+    patchStagingFields: db.prepare(`
+      UPDATE events_staging SET
+        title = @title,
+        organizational_sponsor = @organizational_sponsor,
+        start_datetime = @start_datetime,
+        end_datetime = @end_datetime,
+        location_type = @location_type,
+        location_or_address = @location_or_address,
+        room_number = @room_number,
+        event_link = @event_link,
+        short_description = @short_description,
+        extended_description = @extended_description,
+        artwork_url = @artwork_url,
+        updated_at = @updated_at
+      WHERE id = @id
     `)
   };
 
@@ -807,6 +823,27 @@ export function createRepository(config) {
       statements.patchStagingReviewStatus.run({
         id,
         review_status: status,
+        updated_at: nowIso()
+      });
+      return this.getStagingById(id);
+    },
+
+    patchStagingFields(id, fields) {
+      const current = this.getStagingById(id);
+      if (!current) return null;
+      statements.patchStagingFields.run({
+        id,
+        title: fields.title ?? current.title,
+        organizational_sponsor: fields.organizational_sponsor ?? current.organizational_sponsor,
+        start_datetime: fields.start_datetime ?? current.start_datetime,
+        end_datetime: fields.end_datetime ?? current.end_datetime,
+        location_type: fields.location_type ?? current.location_type,
+        location_or_address: fields.location_or_address ?? current.location_or_address,
+        room_number: fields.room_number ?? current.room_number,
+        event_link: fields.event_link ?? current.event_link,
+        short_description: fields.short_description ?? current.short_description,
+        extended_description: fields.extended_description ?? current.extended_description,
+        artwork_url: fields.artwork_url ?? current.artwork_url,
         updated_at: nowIso()
       });
       return this.getStagingById(id);

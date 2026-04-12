@@ -54,16 +54,13 @@
     }
     .topbar-left  { display: flex; align-items: center; gap: 14px; }
     .topbar-right { display: flex; align-items: center; gap: 8px; }
-
     .brand { font-size: 15px; font-weight: 700; letter-spacing: -.3px; }
 
     .status-pill {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 600;
     }
-    .status-pill::before {
-      content: ''; width: 7px; height: 7px; border-radius: 50%;
-    }
+    .status-pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; }
     .status-online  { background: rgba(22,163,74,.25); color: #86efac; }
     .status-online::before  { background: #4ade80; animation: blink 2s infinite; }
     .status-offline { background: rgba(220,38,38,.25); color: #fca5a5; }
@@ -81,21 +78,22 @@
       white-space: nowrap;
     }
     .btn:disabled { opacity: .45; pointer-events: none; }
-    .btn-sm { padding: 4px 10px; font-size: 12px; }
-    .btn-xs { padding: 3px 8px; font-size: 11px; }
-
-    .btn-ghost    { background: rgba(255,255,255,.08); color: #f8fafc; }
+    .btn-sm  { padding: 4px 10px; font-size: 12px; }
+    .btn-xs  { padding: 3px 8px;  font-size: 11px; }
+    .btn-ghost   { background: rgba(255,255,255,.08); color: #f8fafc; }
     .btn-ghost:hover { background: rgba(255,255,255,.15); }
-    .btn-outline  { background: var(--card); border: 1px solid var(--border); color: var(--text); }
+    .btn-outline { background: var(--card); border: 1px solid var(--border); color: var(--text); }
     .btn-outline:hover { background: var(--bg); }
-    .btn-primary  { background: var(--primary); color: #fff; }
+    .btn-primary { background: var(--primary); color: #fff; }
     .btn-primary:hover { background: var(--primary-dark); }
-    .btn-success  { background: var(--success); color: #fff; }
+    .btn-success { background: var(--success); color: #fff; }
     .btn-success:hover { background: #166534; }
-    .btn-danger   { background: var(--danger); color: #fff; }
-    .btn-danger:hover { background: #991b1b; }
-    .btn-muted    { background: #f1f5f9; border: 1px solid var(--border); color: var(--muted); }
-    .btn-muted:hover { background: var(--border); }
+    .btn-danger  { background: var(--danger);  color: #fff; }
+    .btn-danger:hover  { background: #991b1b; }
+    .btn-muted   { background: #f1f5f9; border: 1px solid var(--border); color: var(--muted); }
+    .btn-muted:hover   { background: var(--border); }
+    .btn-hub { background: #0f172a; color: #fff; padding: 8px 16px; font-weight: 600; border-radius: var(--radius); }
+    .btn-hub:hover { background: #1e293b; }
 
     /* ── Stats row ────────────────────────────────────────── */
     .stats-row {
@@ -104,13 +102,7 @@
       gap: 14px;
       padding: 20px 24px 4px;
     }
-    .stat-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px 20px;
-      box-shadow: var(--shadow);
-    }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; box-shadow: var(--shadow); }
     .stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
     .stat-num   { font-size: 30px; font-weight: 800; color: var(--text); margin: 4px 0 2px; line-height: 1; }
     .stat-sub   { font-size: 11px; color: var(--muted); }
@@ -118,35 +110,20 @@
     /* ── Two-column layout ────────────────────────────────── */
     .layout {
       display: grid;
-      grid-template-columns: 270px 1fr;
+      grid-template-columns: 280px 1fr;
       gap: 16px;
       padding: 16px 24px 40px;
     }
 
     /* ── Panel ────────────────────────────────────────────── */
-    .panel {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      overflow: hidden;
-    }
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
     .panel + .panel { margin-top: 14px; }
-
-    .panel-head {
-      padding: 11px 16px;
-      border-bottom: 1px solid var(--border);
-      background: #fafafa;
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .panel-head h3 {
-      font-size: 11px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: .6px; color: var(--muted);
-    }
+    .panel-head { padding: 11px 16px; border-bottom: 1px solid var(--border); background: #fafafa; display: flex; align-items: center; justify-content: space-between; }
+    .panel-head h3 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
 
     /* ── Sources sidebar ──────────────────────────────────── */
     .source-row {
-      padding: 11px 16px;
+      padding: 10px 16px;
       border-bottom: 1px solid var(--border);
       display: flex; align-items: center; gap: 10px;
     }
@@ -158,61 +135,51 @@
     .source-info { flex: 1; min-width: 0; }
     .source-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .source-sub  { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .source-actions { display: flex; gap: 4px; flex-shrink: 0; }
 
     /* ── Runs log ─────────────────────────────────────────── */
-    .run-row {
-      padding: 7px 16px;
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; gap: 8px;
-      font-size: 12px; color: var(--muted);
-    }
+    .run-row { padding: 7px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
     .run-row:last-child { border-bottom: none; }
     .run-ok  { color: var(--success); font-weight: 700; }
     .run-err { color: var(--danger);  font-weight: 700; }
 
+    /* ── Agent Activity ───────────────────────────────────── */
+    .activity-log { max-height: 220px; overflow-y: auto; }
+    .act-row {
+      padding: 5px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: flex-start; gap: 8px;
+      font-size: 11px;
+    }
+    .act-row:last-child { border-bottom: none; }
+    .act-ts   { color: var(--muted); flex-shrink: 0; min-width: 54px; }
+    .act-icon { flex-shrink: 0; width: 14px; text-align: center; }
+    .act-body { flex: 1; min-width: 0; word-break: break-word; line-height: 1.4; }
+    .act-src  { font-weight: 600; }
+    .act-title { color: var(--muted); }
+
     /* ── Filter tabs ──────────────────────────────────────── */
     .tabs { display: flex; gap: 4px; }
-    .tab {
-      padding: 4px 12px; border-radius: 100px; font-size: 12px; font-weight: 500;
-      cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--muted);
-      transition: all .15s;
-    }
+    .tab { padding: 4px 12px; border-radius: 100px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--muted); transition: all .15s; }
     .tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
     .tab:hover:not(.active) { background: var(--bg); }
-
     .queue-count { font-size: 12px; color: var(--muted); font-weight: 600; }
 
     /* ── Event card ───────────────────────────────────────── */
     .event-card { border-bottom: 1px solid var(--border); }
     .event-card:last-child { border-bottom: none; }
-
-    .card-head {
-      padding: 13px 16px;
-      display: flex; align-items: flex-start; gap: 10px;
-      cursor: pointer;
-      transition: background .12s;
-    }
+    .card-head { padding: 13px 16px; display: flex; align-items: flex-start; gap: 10px; cursor: pointer; transition: background .12s; }
     .card-head:hover { background: #fafafa; }
     .event-card.open .card-head { background: #f8faff; }
-
-    .chevron {
-      width: 15px; height: 15px; flex-shrink: 0; margin-top: 2px;
-      color: var(--muted); transition: transform .2s;
-    }
+    .chevron { width: 15px; height: 15px; flex-shrink: 0; margin-top: 2px; color: var(--muted); transition: transform .2s; }
     .event-card.open .chevron { transform: rotate(180deg); }
-
     .card-title { font-size: 14px; font-weight: 600; flex: 1; }
     .card-meta  { font-size: 12px; color: var(--muted); margin-top: 3px; display: flex; flex-wrap: wrap; gap: 5px; }
     .meta-sep   { color: #cbd5e1; }
-
     .badges { display: flex; gap: 5px; align-items: center; flex-shrink: 0; margin-left: 6px; }
 
     /* ── Badges ───────────────────────────────────────────── */
-    .badge {
-      display: inline-flex; align-items: center;
-      padding: 2px 8px; border-radius: 100px;
-      font-size: 11px; font-weight: 600; white-space: nowrap; border: 1px solid transparent;
-    }
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 100px; font-size: 11px; font-weight: 600; white-space: nowrap; border: 1px solid transparent; }
     .b-hyperlocal { background:#dbeafe; color:#1e40af; border-color:#bfdbfe; }
     .b-city       { background:#d1fae5; color:#065f46; border-color:#a7f3d0; }
     .b-lorain     { background:#ede9fe; color:#5b21b6; border-color:#ddd6fe; }
@@ -221,210 +188,166 @@
     .b-state      { background:#f1f5f9; color:#475569; border-color:#e2e8f0; }
     .b-national   { background:#f1f5f9; color:#475569; border-color:#e2e8f0; }
     .b-unknown    { background:#f1f5f9; color:#94a3b8; border-color:#e2e8f0; }
-
-    .b-pending  { background:var(--warning-bg);  color:var(--warning);  border-color:var(--warning-border); }
-    .b-approved { background:var(--success-bg);  color:var(--success);  border-color:var(--success-border); }
-    .b-rejected { background:var(--danger-bg);   color:var(--danger);   border-color:var(--danger-border); }
-    .b-dup      { background:#fef3c7; color:#92400e; border-color:#fde68a; }
+    .b-pending    { background:var(--warning-bg);  color:var(--warning);  border-color:var(--warning-border); }
+    .b-approved   { background:var(--success-bg);  color:var(--success);  border-color:var(--success-border); }
+    .b-rejected   { background:var(--danger-bg);   color:var(--danger);   border-color:var(--danger-border); }
+    .b-dup        { background:#fef3c7; color:#92400e; border-color:#fde68a; }
 
     /* ── Expanded body ────────────────────────────────────── */
-    .card-body {
-      display: none;
-      padding: 20px 18px;
-      background: #fafafa;
-      border-top: 1px solid var(--border);
-    }
+    .card-body { display: none; padding: 20px 18px; background: #fafafa; border-top: 1px solid var(--border); }
     .event-card.open .card-body { display: block; }
 
     /* ── Field sections ───────────────────────────────────── */
     .fsection { margin-bottom: 22px; }
-    .fsection-title {
-      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px;
-      color: var(--muted); padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 10px;
-    }
+    .fsection-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
     .fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .fcol2 { grid-column: 1 / -1; }
-
     .fitem { display: flex; flex-direction: column; gap: 3px; }
-    .flabel {
-      font-size: 11px; font-weight: 600; text-transform: uppercase;
-      letter-spacing: .3px; color: var(--muted);
-    }
+    .flabel { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .3px; color: var(--muted); }
     .fvalue-wrap { position: relative; }
-    .fvalue {
-      background: #fff; border: 1px solid var(--border); border-radius: 6px;
-      padding: 7px 32px 7px 10px; min-height: 34px;
-      font-size: 13px; word-break: break-word;
-    }
+    .fvalue { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 7px 32px 7px 10px; min-height: 34px; font-size: 13px; word-break: break-word; }
     .fvalue.empty { color: var(--muted); font-style: italic; }
     .fvalue.tall  { min-height: 80px; white-space: pre-wrap; }
-
-    .copy-btn {
-      position: absolute; right: 6px; top: 7px;
-      background: none; border: none; cursor: pointer;
-      font-size: 15px; color: var(--muted); padding: 2px 3px; border-radius: 4px;
-      line-height: 1; transition: color .12s, background .12s;
-    }
+    .copy-btn { position: absolute; right: 6px; top: 7px; background: none; border: none; cursor: pointer; font-size: 15px; color: var(--muted); padding: 2px 3px; border-radius: 4px; line-height: 1; transition: color .12s, background .12s; }
     .copy-btn:hover { color: var(--primary); background: var(--info-bg); }
-    .fvalue.tall ~ .copy-btn { top: 7px; }
-
-    .ftags {
-      background: #fff; border: 1px solid var(--border); border-radius: 6px;
-      padding: 6px 10px; min-height: 34px;
-      display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
-    }
-    .ftag {
-      padding: 2px 8px; background: var(--info-bg); border: 1px solid var(--info-border);
-      color: var(--primary); border-radius: 100px; font-size: 11px; font-weight: 500;
-    }
+    .ftags { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; min-height: 34px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+    .ftag { padding: 2px 8px; background: var(--info-bg); border: 1px solid var(--info-border); color: var(--primary); border-radius: 100px; font-size: 11px; font-weight: 500; }
 
     /* ── Duplicate notice ─────────────────────────────────── */
-    .dup-notice {
-      background: var(--warning-bg); border: 1px solid var(--warning-border);
-      border-radius: var(--radius); padding: 10px 14px;
-      font-size: 12px; color: var(--warning); margin-bottom: 18px;
-      display: flex; gap: 8px; align-items: flex-start;
-    }
+    .dup-notice { background: var(--warning-bg); border: 1px solid var(--warning-border); border-radius: var(--radius); padding: 10px 14px; font-size: 12px; color: var(--warning); margin-bottom: 18px; display: flex; gap: 8px; align-items: flex-start; }
     .dup-notice a { color: inherit; text-decoration: underline; }
 
     /* ── Action bar ───────────────────────────────────────── */
-    .action-bar {
-      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-      padding-top: 16px; margin-top: 6px; border-top: 1px solid var(--border);
-    }
+    .action-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 16px; margin-top: 6px; border-top: 1px solid var(--border); }
     .action-bar-space { flex: 1; }
 
-    /* Community Hub submit button gets special treatment */
-    .btn-hub {
-      background: #0f172a; color: #fff; font-size: 13px;
-      padding: 8px 16px; border-radius: var(--radius); font-weight: 600;
-    }
-    .btn-hub:hover { background: #1e293b; }
-
     /* ── Empty / loading states ───────────────────────────── */
-    .empty {
-      padding: 48px 24px; text-align: center; color: var(--muted);
-    }
+    .empty { padding: 48px 24px; text-align: center; color: var(--muted); }
     .empty-icon  { font-size: 38px; margin-bottom: 10px; }
     .empty-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
     .empty-desc  { font-size: 13px; }
-
-    .spin {
-      width: 18px; height: 18px; border: 2px solid var(--border);
-      border-top-color: var(--primary); border-radius: 50%;
-      animation: spin .65s linear infinite; display: inline-block;
-    }
+    .spin { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .65s linear infinite; display: inline-block; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── Toasts ───────────────────────────────────────────── */
-    #toasts {
-      position: fixed; bottom: 20px; right: 20px;
-      display: flex; flex-direction: column; gap: 6px; z-index: 9999;
-    }
-    .toast {
-      padding: 10px 16px; border-radius: var(--radius); font-size: 13px; font-weight: 500;
-      box-shadow: 0 4px 14px rgba(0,0,0,.18);
-      animation: slideUp .2s ease;
-    }
+    #toasts { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 6px; z-index: 9999; }
+    .toast { padding: 10px 16px; border-radius: var(--radius); font-size: 13px; font-weight: 500; box-shadow: 0 4px 14px rgba(0,0,0,.18); animation: slideUp .2s ease; }
     .toast-ok  { background: #15803d; color:#fff; }
     .toast-err { background: #b91c1c; color:#fff; }
     .toast-inf { background: #1d4ed8; color:#fff; }
     @keyframes slideUp { from { transform:translateY(12px); opacity:0; } }
 
-    /* ── Poster modal ─────────────────────────────────────── */
-    .modal-overlay {
-      display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,.55); z-index: 500;
-      align-items: center; justify-content: center;
-    }
+    /* ── Modals ───────────────────────────────────────────── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 500; align-items: center; justify-content: center; }
     .modal-overlay.open { display: flex; }
-    .modal {
-      background: var(--card); border-radius: 12px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.3);
-      width: min(680px, 94vw); max-height: 90vh;
-      overflow-y: auto; padding: 28px 28px 24px;
-    }
-    .modal-head {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 18px;
-    }
+    .modal { background: var(--card); border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.3); width: min(700px, 96vw); max-height: 92vh; overflow-y: auto; padding: 28px 28px 24px; }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
     .modal-title { font-size: 17px; font-weight: 700; }
-    .modal-close {
-      background: none; border: none; font-size: 22px; cursor: pointer;
-      color: var(--muted); line-height: 1; padding: 2px 6px; border-radius: 4px;
-    }
+    .modal-subtitle { font-size: 12px; color: var(--muted); margin-top: 3px; }
+    .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--muted); line-height: 1; padding: 2px 6px; border-radius: 4px; }
     .modal-close:hover { background: var(--bg); color: var(--text); }
 
+    /* ── Form inputs ──────────────────────────────────────── */
     .input-group { margin-bottom: 14px; }
     .input-group label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .3px; }
-    .input-group input, .input-group textarea {
+    .input-group input, .input-group textarea, .input-group select {
       width: 100%; padding: 9px 12px; border: 1px solid var(--border);
       border-radius: var(--radius); font-size: 13px; font-family: inherit;
       background: var(--card); color: var(--text);
     }
-    .input-group input:focus, .input-group textarea:focus {
+    .input-group textarea { resize: vertical; min-height: 80px; }
+    .input-group input:focus, .input-group textarea:focus, .input-group select:focus {
       outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(29,78,216,.12);
     }
-    .or-divider {
-      text-align: center; color: var(--muted); font-size: 12px; font-weight: 600;
-      margin: 10px 0; position: relative;
-    }
-    .or-divider::before, .or-divider::after {
-      content: ''; position: absolute; top: 50%; width: 42%; height: 1px;
-      background: var(--border);
-    }
-    .or-divider::before { left: 0; }
-    .or-divider::after  { right: 0; }
+    .ig-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .ig-grid2 .input-group { margin-bottom: 0; }
+    .ig-grid-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
 
-    .poster-preview {
-      width: 100%; max-height: 260px; object-fit: contain;
-      border: 1px solid var(--border); border-radius: var(--radius);
-      margin-bottom: 14px; display: none;
-    }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .toggle-row label { font-size: 13px; font-weight: 500; }
+    .toggle-row input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; }
+
+    .or-divider { text-align: center; color: var(--muted); font-size: 12px; font-weight: 600; margin: 10px 0; position: relative; }
+    .or-divider::before, .or-divider::after { content: ''; position: absolute; top: 50%; width: 42%; height: 1px; background: var(--border); }
+    .or-divider::before { left: 0; } .or-divider::after { right: 0; }
+
+    .poster-preview { width: 100%; max-height: 260px; object-fit: contain; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; display: none; }
     .poster-preview.visible { display: block; }
-
-    .extract-result {
-      margin-top: 18px; padding: 16px; background: var(--bg);
-      border: 1px solid var(--border); border-radius: var(--radius);
-      display: none;
-    }
+    .extract-result { margin-top: 18px; padding: 16px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); display: none; }
     .extract-result.visible { display: block; }
     .extract-result-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
     .extract-result-meta  { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
 
     /* ── Research metrics ─────────────────────────────────── */
-    .metrics-section {
-      padding: 0 24px 40px;
-    }
-    .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 14px;
-      margin-top: 14px;
-    }
-    .metric-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 14px 18px;
-      box-shadow: var(--shadow);
-    }
+    .metrics-section { padding: 0 24px 40px; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-top: 14px; }
+    .metric-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; box-shadow: var(--shadow); }
     .metric-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
     .metric-value { font-size: 26px; font-weight: 800; color: var(--text); margin: 4px 0 2px; line-height: 1; }
     .metric-sub   { font-size: 11px; color: var(--muted); }
-
     .source-breakdown { margin-top: 14px; }
-    .sb-row {
-      display: flex; align-items: center; gap: 10px; padding: 8px 0;
-      border-bottom: 1px solid var(--border); font-size: 13px;
-    }
+    .sb-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
     .sb-row:last-child { border-bottom: none; }
     .sb-bar-wrap { flex: 1; background: var(--bg); border-radius: 100px; height: 8px; overflow: hidden; }
     .sb-bar { height: 100%; background: var(--primary); border-radius: 100px; transition: width .4s; }
     .sb-count { font-weight: 700; min-width: 28px; text-align: right; }
 
-    @media (max-width: 880px) {
-      .layout      { grid-template-columns: 1fr; }
-      .stats-row   { grid-template-columns: repeat(2,1fr); }
-      .fgrid       { grid-template-columns: 1fr; }
+    /* ── Pipeline banner ──────────────────────────────────── */
+    .pipeline-section { padding: 16px 24px 2px; }
+    .pipeline-banner {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+      border-radius: var(--radius);
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      gap: 0;
+      overflow-x: auto;
+      box-shadow: var(--shadow);
+    }
+    .pipe-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      min-width: 120px;
+      flex: 1;
+    }
+    .pipe-icon {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      position: relative;
+    }
+    .pipe-icon.active { animation: pulseGlow 1.5s infinite; }
+    @keyframes pulseGlow {
+      0%,100% { box-shadow: 0 0 0 0 rgba(96,165,250,.6); }
+      50%      { box-shadow: 0 0 0 10px rgba(96,165,250,.0); }
+    }
+    .pipe-label { font-size: 11px; font-weight: 600; color: #cbd5e1; text-align: center; line-height: 1.3; }
+    .pipe-sub   { font-size: 10px; color: #64748b; text-align: center; }
+    .pipe-arrow {
+      font-size: 20px; color: #334155; flex-shrink: 0;
+      display: flex; align-items: center; padding: 0 4px;
+    }
+    .pipe-icon-1 { background: rgba(99,102,241,.2); border: 1.5px solid rgba(99,102,241,.4); }
+    .pipe-icon-2 { background: rgba(20,184,166,.2); border: 1.5px solid rgba(20,184,166,.4); }
+    .pipe-icon-3 { background: rgba(245,158,11,.2); border: 1.5px solid rgba(245,158,11,.4); }
+    .pipe-icon-4 { background: rgba(239,68,68,.2);  border: 1.5px solid rgba(239,68,68,.4);  }
+    .pipe-icon-5 { background: rgba(34,197,94,.2);  border: 1.5px solid rgba(34,197,94,.4);  }
+    .pipe-stat {
+      font-size: 18px; font-weight: 800; color: #f8fafc;
+      text-align: center; line-height: 1;
+    }
+
+    @media (max-width: 900px) {
+      .layout    { grid-template-columns: 1fr; }
+      .stats-row { grid-template-columns: repeat(2,1fr); }
+      .fgrid     { grid-template-columns: 1fr; }
+      .ig-grid2  { grid-template-columns: 1fr; }
+      .ig-grid-wrap { grid-template-columns: 1fr; }
+      .pipeline-banner { gap: 4px; padding: 14px 12px; }
+      .pipe-step { min-width: 80px; }
     }
   </style>
 </head>
@@ -439,6 +362,7 @@
   </div>
   <div class="topbar-right">
     <span class="ts" id="tsLabel"></span>
+    <button class="btn btn-ghost btn-sm" onclick="exportCsv()">⬇ Export CSV</button>
     <button class="btn btn-ghost btn-sm" onclick="doRefresh()">Refresh</button>
     <button class="btn btn-ghost btn-sm" onclick="syncHub()" id="syncBtn">Sync Hub</button>
     <button class="btn btn-primary btn-sm" onclick="runAll()" id="runBtn">▶ Run Now</button>
@@ -453,11 +377,52 @@
   <div class="stat-card"><div class="stat-label">Hub Memory</div><div class="spin" style="margin-top:10px"></div></div>
 </div>
 
+<!-- ═══ PIPELINE DIAGRAM ═════════════════════════════════════════════════════ -->
+<div class="pipeline-section">
+  <div class="pipeline-banner" id="pipelineBanner">
+    <div class="pipe-step">
+      <div class="pipe-icon pipe-icon-1" id="pipeStep1">🌐</div>
+      <div class="pipe-label">Listing Collector</div>
+      <div class="pipe-sub">Browser + MCP</div>
+      <div class="pipe-stat" id="pipeStat1">—</div>
+    </div>
+    <div class="pipe-arrow">▶</div>
+    <div class="pipe-step">
+      <div class="pipe-icon pipe-icon-2" id="pipeStep2">🔍</div>
+      <div class="pipe-label">Detail Extractor</div>
+      <div class="pipe-sub">GPT-4.1</div>
+      <div class="pipe-stat" id="pipeStat2">—</div>
+    </div>
+    <div class="pipe-arrow">▶</div>
+    <div class="pipe-step">
+      <div class="pipe-icon pipe-icon-3" id="pipeStep3">📍</div>
+      <div class="pipe-label">Hyperlocal Tagger</div>
+      <div class="pipe-sub">GPT-4.1-mini</div>
+      <div class="pipe-stat" id="pipeStat3">—</div>
+    </div>
+    <div class="pipe-arrow">▶</div>
+    <div class="pipe-step">
+      <div class="pipe-icon pipe-icon-4" id="pipeStep4">🔄</div>
+      <div class="pipe-label">Dedup Agent</div>
+      <div class="pipe-sub">GPT-4.1-mini</div>
+      <div class="pipe-stat" id="pipeStat4">—</div>
+    </div>
+    <div class="pipe-arrow">▶</div>
+    <div class="pipe-step">
+      <div class="pipe-icon pipe-icon-5" id="pipeStep5">✅</div>
+      <div class="pipe-label">Human Review</div>
+      <div class="pipe-sub">Community Hub</div>
+      <div class="pipe-stat" id="pipeStat5">—</div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ MAIN LAYOUT ══════════════════════════════════════════════════════════ -->
 <div class="layout">
 
   <!-- Left sidebar -->
   <aside>
+    <!-- Sources -->
     <div class="panel">
       <div class="panel-head">
         <h3>Sources</h3>
@@ -466,6 +431,18 @@
       <div id="sourcesList"><div style="padding:18px;color:var(--muted)"><div class="spin"></div></div></div>
     </div>
 
+    <!-- Agent Activity -->
+    <div class="panel">
+      <div class="panel-head">
+        <h3>Agent Activity</h3>
+        <span id="activityDot" style="display:none;width:8px;height:8px;border-radius:50%;background:#4ade80;animation:blink 1.2s infinite;flex-shrink:0"></span>
+      </div>
+      <div class="activity-log" id="activityLog">
+        <div style="padding:14px 16px;font-size:12px;color:var(--muted)">No activity yet.</div>
+      </div>
+    </div>
+
+    <!-- Recent Runs -->
     <div class="panel">
       <div class="panel-head"><h3>Recent Runs</h3></div>
       <div id="runsList"><div style="padding:18px;color:var(--muted)"><div class="spin"></div></div></div>
@@ -485,11 +462,11 @@
             📸 Extract from Poster
           </button>
           <div class="tabs">
-            <button class="tab active" data-f="pending"    onclick="setFilter('pending')">Pending</button>
-            <button class="tab"        data-f="duplicate"  onclick="setFilter('duplicate')">Duplicates</button>
-            <button class="tab"        data-f="approved"   onclick="setFilter('approved')">Submitted</button>
-            <button class="tab"        data-f="rejected"   onclick="setFilter('rejected')">Rejected</button>
-            <button class="tab"        data-f="all"        onclick="setFilter('all')">All</button>
+            <button class="tab active" data-f="pending"   onclick="setFilter('pending')">Pending</button>
+            <button class="tab"        data-f="duplicate" onclick="setFilter('duplicate')">Duplicates</button>
+            <button class="tab"        data-f="approved"  onclick="setFilter('approved')">Submitted</button>
+            <button class="tab"        data-f="rejected"  onclick="setFilter('rejected')">Rejected</button>
+            <button class="tab"        data-f="all"       onclick="setFilter('all')">All</button>
           </div>
         </div>
       </div>
@@ -521,56 +498,174 @@
     <div class="modal-head">
       <div>
         <div class="modal-title">📸 Extract Event from Poster</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:3px">
-          Research feature — AI Micro Grant Pilot · GPT-4o Vision
-        </div>
+        <div class="modal-subtitle">Research feature — AI Micro Grant · GPT-4o Vision</div>
       </div>
       <button class="modal-close" onclick="closePosterModal()">×</button>
     </div>
-
-    <!-- URL input -->
     <div class="input-group">
       <label>Paste a public image URL</label>
-      <input type="url" id="posterUrl" placeholder="https://example.com/poster.jpg"
-        oninput="previewPosterUrl(this.value)">
+      <input type="url" id="posterUrl" placeholder="https://example.com/poster.jpg" oninput="previewPosterUrl(this.value)">
     </div>
-
     <img id="posterPreview" class="poster-preview" alt="Poster preview">
-
     <div class="or-divider">or upload a file</div>
-
-    <!-- File upload -->
     <div class="input-group">
       <label>Upload poster image</label>
       <input type="file" id="posterFile" accept="image/*" onchange="handlePosterFile(this)">
     </div>
-
     <div class="input-group">
       <label>Source label (optional)</label>
       <input type="text" id="posterSourceName" placeholder="e.g. Oberlin Heritage Center flyer">
     </div>
-
     <div style="display:flex;gap:8px;align-items:center">
-      <button class="btn btn-primary" id="extractBtn" onclick="runPosterExtract()">
-        Extract Event Info
-      </button>
+      <button class="btn btn-primary" id="extractBtn" onclick="runPosterExtract()">Extract Event Info</button>
       <button class="btn btn-outline" onclick="closePosterModal()">Cancel</button>
       <span id="extractSpinner" style="display:none"><span class="spin"></span></span>
       <span id="extractStatus" style="font-size:12px;color:var(--muted)"></span>
     </div>
-
-    <!-- Result area -->
     <div class="extract-result" id="extractResult">
       <div class="extract-result-title" id="extractTitle"></div>
       <div class="extract-result-meta" id="extractMeta"></div>
       <div id="extractFields"></div>
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-        <a class="btn btn-hub" href="https://environmentaldashboard.org/calendar/post/new?show-menu-bar=1"
-           target="_blank" rel="noopener">Open Community Hub Form ↗</a>
-        <button class="btn btn-success btn-sm" id="saveToQueueBtn" onclick="savePosterToQueue()">
-          + Save to Review Queue
-        </button>
+        <a class="btn btn-hub" href="https://environmentaldashboard.org/calendar/post/new?show-menu-bar=1" target="_blank" rel="noopener">Open Community Hub Form ↗</a>
+        <button class="btn btn-success btn-sm" id="saveToQueueBtn" onclick="savePosterToQueue()">+ Save to Review Queue</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ EDIT SOURCE MODAL ═════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="editSourceOverlay" onclick="closeEditSource(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Edit Source</div>
+        <div class="modal-subtitle" id="editSourceSubtitle"></div>
+      </div>
+      <button class="modal-close" onclick="closeEditSource()">×</button>
+    </div>
+    <div class="input-group">
+      <label>Source Name</label>
+      <input type="text" id="es_source_name">
+    </div>
+    <div class="ig-grid-wrap">
+      <div class="input-group">
+        <label>Listing URL</label>
+        <input type="url" id="es_listing_url">
+      </div>
+      <div class="input-group">
+        <label>Adapter</label>
+        <select id="es_adapter_key">
+          <option value="openai_listing_v1">openai_listing_v1 (browser + AI)</option>
+          <option value="localist_v1">localist_v1 (Localist API)</option>
+          <option value="ics_v1">ics_v1 (ICS feed)</option>
+          <option value="browser_listing_v1">browser_listing_v1 (browser only)</option>
+        </select>
+      </div>
+    </div>
+    <div class="ig-grid-wrap">
+      <div class="input-group">
+        <label>API Base URL <span style="font-weight:400;text-transform:none">(if Localist)</span></label>
+        <input type="url" id="es_api_base_url">
+      </div>
+      <div class="input-group">
+        <label>ICS URL <span style="font-weight:400;text-transform:none">(if ICS)</span></label>
+        <input type="url" id="es_ics_url">
+      </div>
+    </div>
+    <div class="ig-grid-wrap">
+      <div class="input-group">
+        <label>Poll Interval (minutes)</label>
+        <input type="number" id="es_poll_interval" min="15" step="15">
+      </div>
+      <div class="input-group">
+        <label>Attribution Label</label>
+        <input type="text" id="es_attribution_label">
+      </div>
+    </div>
+    <div class="toggle-row" style="margin-bottom:14px">
+      <label for="es_is_active">Active (include in scheduled runs)</label>
+      <input type="checkbox" id="es_is_active">
+    </div>
+    <div class="input-group">
+      <label>Notes</label>
+      <textarea id="es_notes" rows="2"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeEditSource()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditSource()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ EDIT EVENT MODAL ══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="editEventOverlay" onclick="closeEditEvent(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Edit Event</div>
+        <div class="modal-subtitle" id="editEventSubtitle"></div>
+      </div>
+      <button class="modal-close" onclick="closeEditEvent()">×</button>
+    </div>
+    <div class="input-group">
+      <label>Title</label>
+      <input type="text" id="ee_title">
+    </div>
+    <div class="input-group">
+      <label>Organizational Sponsor</label>
+      <input type="text" id="ee_organizational_sponsor">
+    </div>
+    <div class="ig-grid-wrap">
+      <div class="input-group">
+        <label>Start Date/Time</label>
+        <input type="datetime-local" id="ee_start_datetime">
+      </div>
+      <div class="input-group">
+        <label>End Date/Time</label>
+        <input type="datetime-local" id="ee_end_datetime">
+      </div>
+    </div>
+    <div class="ig-grid-wrap">
+      <div class="input-group">
+        <label>Location Type</label>
+        <select id="ee_location_type">
+          <option value="">— select —</option>
+          <option value="In-Person">In-Person</option>
+          <option value="Online">Online</option>
+          <option value="Hybrid">Hybrid</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>Location / Address</label>
+        <input type="text" id="ee_location_or_address">
+      </div>
+    </div>
+    <div class="ig-grid-wrap">
+      <div class="input-group">
+        <label>Room Number</label>
+        <input type="text" id="ee_room_number">
+      </div>
+      <div class="input-group">
+        <label>Event / Meeting Link</label>
+        <input type="url" id="ee_event_link">
+      </div>
+    </div>
+    <div class="input-group">
+      <label>Short Description (for digital signs, ~200 chars)</label>
+      <textarea id="ee_short_description" rows="3"></textarea>
+    </div>
+    <div class="input-group">
+      <label>Extended Description (for web &amp; newsletter)</label>
+      <textarea id="ee_extended_description" rows="5"></textarea>
+    </div>
+    <div class="input-group">
+      <label>Artwork / Image URL</label>
+      <input type="url" id="ee_artwork_url">
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeEditEvent()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditEvent()">Save Changes</button>
     </div>
   </div>
 </div>
@@ -583,7 +678,11 @@ const HUB_FORM = "https://environmentaldashboard.org/calendar/post/new?show-menu
 
 let filter    = "pending";
 let allEvents = [];
+let allSources = [];
 let openCards = new Set();
+
+let editingSourceId = null;
+let editingEventId  = null;
 
 /* ── API ─────────────────────────────────────────────────────────────────── */
 async function apiFetch(path, opts = {}) {
@@ -595,31 +694,6 @@ async function apiFetch(path, opts = {}) {
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || r.statusText);
   return j;
-}
-
-/* ── Load all data ───────────────────────────────────────────────────────── */
-async function loadAll() {
-  try {
-    const [health, stagingRes, sourcesRes, runsRes] = await Promise.all([
-      apiFetch("/health"),
-      apiFetch("/api/events-staging?limit=200"),
-      apiFetch("/api/sources"),
-      apiFetch("/api/source-runs?limit=12")
-    ]);
-
-    setOnline(true);
-    renderStats(health, stagingRes);
-    renderSources(sourcesRes.sources || []);
-    renderRuns(runsRes.runs || []);
-    allEvents = stagingRes.events_staging || [];
-    renderQueue();
-    renderMetrics(allEvents, sourcesRes.sources || []);
-    document.getElementById("tsLabel").textContent =
-      "Updated " + new Date().toLocaleTimeString();
-  } catch (e) {
-    setOnline(false);
-    console.error(e);
-  }
 }
 
 /* ── Status pill ─────────────────────────────────────────────────────────── */
@@ -668,16 +742,66 @@ function renderSources(sources) {
     const dotCls = s.last_run_status === "success" ? "dot-ok"
                  : s.last_run_status === "failed"  ? "dot-err"
                  : "dot-idle";
+    const inactive = !s.is_active ? ' <span style="font-size:10px;color:var(--muted)">(off)</span>' : "";
     return `
       <div class="source-row">
         <div class="source-dot ${dotCls}"></div>
         <div class="source-info">
-          <div class="source-name" title="${esc(s.source_name)}">${esc(s.source_name)}</div>
-          <div class="source-sub">${s.last_polled_at ? ago(s.last_polled_at) : "never run"}
-            ${s.adapter_key ? " · " + s.adapter_key.replace(/_v\d$/, "") : ""}</div>
+          <div class="source-name" title="${esc(s.source_name)}">${esc(s.source_name)}${inactive}</div>
+          <div class="source-sub">${s.last_polled_at ? ago(s.last_polled_at) : "never run"}${s.adapter_key ? " · " + s.adapter_key.replace(/_v\d$/, "") : ""}</div>
         </div>
-        <button class="btn btn-outline btn-xs" onclick="runSource('${s.id}')">▶</button>
+        <div class="source-actions">
+          <button class="btn btn-outline btn-xs" onclick="openEditSource('${s.id}')" title="Edit source">✎</button>
+          <button class="btn btn-outline btn-xs" onclick="runSource('${s.id}')" title="Run now" ${!s.is_active ? "disabled" : ""}>▶</button>
+        </div>
       </div>`;
+  }).join("");
+}
+
+/* ── Agent Activity log ──────────────────────────────────────────────────── */
+const ACT_ICONS = {
+  source_start:    "🚀", listing_done: "🔍",
+  detail_start:    "⏳", detail_done:  "✅", detail_error:     "❌",
+  hyperlocal_start:"📍", hyperlocal_done:"✅", hyperlocal_error:"❌",
+  dedupe_start:    "🔄", dedupe_done:  "✅", dedupe_error:     "❌",
+  source_done:     "🏁", source_error: "💥"
+};
+
+function renderActivity(entries) {
+  const dot  = document.getElementById("activityDot");
+  const log  = document.getElementById("activityLog");
+  if (!entries.length) {
+    dot.style.display = "none";
+    log.innerHTML = '<div style="padding:14px 16px;font-size:12px;color:var(--muted)">No activity yet. Click ▶ Run Now to start.</div>';
+    return;
+  }
+  // Show the blinking dot if something ran in the last 5 minutes
+  const recentMs = Date.now() - new Date(entries[0].ts).getTime();
+  dot.style.display = recentMs < 5 * 60 * 1000 ? "inline-block" : "none";
+
+  log.innerHTML = entries.slice(0, 60).map(a => {
+    const icon = ACT_ICONS[a.type] || "·";
+    const time = new Date(a.ts).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" });
+    let body = "";
+    switch (a.type) {
+      case "source_start":  body = `<span class="act-src">${esc(a.source)}</span> — starting (${esc(a.adapter)})`; break;
+      case "listing_done":  body = `<span class="act-src">${esc(a.source)}</span> — found <strong>${a.candidates}</strong> candidates`; break;
+      case "detail_start":  body = `Extracting detail${a.title ? `: <span class="act-title">${esc(a.title)}</span>` : ""}`; break;
+      case "detail_done":   body = `Detail extracted: <span class="act-title">${esc(a.title)}</span>`; break;
+      case "detail_error":  body = `Detail error: <span style="color:var(--danger)">${esc(a.error)}</span>`; break;
+      case "hyperlocal_start": body = `Classifying: <span class="act-title">${esc(a.title)}</span>`; break;
+      case "hyperlocal_done":  body = `Scope → <strong>${esc(a.scope)}</strong>: <span class="act-title">${esc(a.title)}</span>`; break;
+      case "hyperlocal_error": body = `Hyperlocal error: <span style="color:var(--danger)">${esc(a.error)}</span>`; break;
+      case "dedupe_start":  body = `Dedup check: <span class="act-title">${esc(a.title)}</span>`; break;
+      case "dedupe_done":   body = a.is_duplicate
+        ? `Duplicate: <span style="color:var(--warning)">${esc(a.title)}</span> — ${esc(a.reason)}`
+        : `Unique: <span class="act-title">${esc(a.title)}</span>`; break;
+      case "dedupe_error":  body = `Dedup error: <span style="color:var(--danger)">${esc(a.error)}</span>`; break;
+      case "source_done":   body = `<span class="act-src">${esc(a.source)}</span> done — <strong>${a.upserted_events}</strong> staged`; break;
+      case "source_error":  body = `<span class="act-src">${esc(a.source)}</span> <span style="color:var(--danger)">failed: ${esc(a.error)}</span>`; break;
+      default:              body = esc(JSON.stringify(a));
+    }
+    return `<div class="act-row"><span class="act-ts">${time}</span><span class="act-icon">${icon}</span><span class="act-body">${body}</span></div>`;
   }).join("");
 }
 
@@ -701,8 +825,7 @@ function renderRuns(runs) {
 /* ── Queue ───────────────────────────────────────────────────────────────── */
 function setFilter(f) {
   filter = f;
-  document.querySelectorAll(".tab").forEach(t =>
-    t.classList.toggle("active", t.dataset.f === f));
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.f === f));
   renderQueue();
 }
 
@@ -719,7 +842,6 @@ function filteredEvents() {
 function renderQueue() {
   const evts = filteredEvents();
   document.getElementById("queueCount").textContent = evts.length + " event" + (evts.length === 1 ? "" : "s");
-
   if (!evts.length) {
     document.getElementById("reviewQueue").innerHTML = `
       <div class="empty">
@@ -731,9 +853,7 @@ function renderQueue() {
       </div>`;
     return;
   }
-
   document.getElementById("reviewQueue").innerHTML = evts.map(ev => buildCard(ev)).join("");
-  // Restore open state
   openCards.forEach(id => {
     const el = document.getElementById("c-" + id);
     if (el) el.classList.add("open");
@@ -791,7 +911,6 @@ function buildCard(ev) {
       <span class="badge ${statusCls}">${statusTxt}</span>
     </div>
   </div>
-
   <div class="card-body">
     ${buildBody(ev, p, isDup)}
   </div>
@@ -800,14 +919,14 @@ function buildCard(ev) {
 
 /* ── Build expanded body ─────────────────────────────────────────────────── */
 function buildBody(ev, p, isDup) {
-  const geo = ev.geographic_tags || [];
+  const geo  = ev.geographic_tags || [];
   const cats = p.event_type_categories || ev.event_type_categories || [];
 
   return `
     ${isDup ? `<div class="dup-notice">⚠️
       <div><strong>Duplicate detected</strong> — this event already exists in the Community Hub or staging queue.<br>
-      <small>${esc(ev.duplicate_reason || "")}
-        ${ev.duplicate_match_url ? `— <a href="${esc(ev.duplicate_match_url)}" target="_blank">${esc(ev.duplicate_match_url)}</a>` : ""}</small>
+      <small>${esc(ev.duplicate_reason || "")}${ev.duplicate_match_url
+        ? ` — <a href="${esc(ev.duplicate_match_url)}" target="_blank">${esc(ev.duplicate_match_url)}</a>` : ""}</small>
       </div></div>` : ""}
 
     <!-- 1. Core event info -->
@@ -891,21 +1010,15 @@ function buildBody(ev, p, isDup) {
       <a class="btn btn-hub" href="${HUB_FORM}" target="_blank" rel="noopener noreferrer">
         Open Community Hub Form ↗
       </a>
+      <button class="btn btn-outline btn-sm" onclick="openEditEvent('${ev.id}');event.stopPropagation()">
+        ✎ Edit Fields
+      </button>
       <div class="action-bar-space"></div>
       ${!isDup && ev.review_status !== "approved" ? `
-        <button class="btn btn-success btn-sm"
-          onclick="setStatus('${ev.id}','approved');event.stopPropagation()">
-          ✓ Mark Submitted
-        </button>` : ""}
+        <button class="btn btn-success btn-sm" onclick="setStatus('${ev.id}','approved');event.stopPropagation()">✓ Mark Submitted</button>` : ""}
       ${ev.review_status !== "rejected" ? `
-        <button class="btn btn-danger btn-sm"
-          onclick="setStatus('${ev.id}','rejected');event.stopPropagation()">
-          ✕ Reject
-        </button>` : `
-        <button class="btn btn-muted btn-sm"
-          onclick="setStatus('${ev.id}','pending');event.stopPropagation()">
-          ↩ Restore
-        </button>`}
+        <button class="btn btn-danger btn-sm" onclick="setStatus('${ev.id}','rejected');event.stopPropagation()">✕ Reject</button>` : `
+        <button class="btn btn-muted btn-sm" onclick="setStatus('${ev.id}','pending');event.stopPropagation()">↩ Restore</button>`}
     </div>`;
 }
 
@@ -939,18 +1052,14 @@ function ftall(label, value) {
 /* ── Actions ─────────────────────────────────────────────────────────────── */
 async function setStatus(id, status) {
   try {
-    await apiFetch("/api/events-staging/" + id, {
-      method: "PATCH", body: { review_status: status }
-    });
+    await apiFetch("/api/events-staging/" + id, { method: "PATCH", body: { review_status: status } });
     const ev = allEvents.find(e => e.id === id);
     if (ev) ev.review_status = status;
     renderQueue();
     toast(status === "approved" ? "Marked as submitted ✓"
         : status === "rejected" ? "Event rejected"
         : "Restored to pending", status === "approved" ? "ok" : status === "rejected" ? "err" : "inf");
-  } catch (e) {
-    toast("Error: " + e.message, "err");
-  }
+  } catch (e) { toast("Error: " + e.message, "err"); }
 }
 
 async function runSource(id) {
@@ -988,6 +1097,115 @@ async function syncHub() {
 }
 
 async function doRefresh() { await loadAll(); }
+
+/* ── Edit Source modal ───────────────────────────────────────────────────── */
+function openEditSource(id) {
+  const src = allSources.find(s => s.id === id);
+  if (!src) return;
+  editingSourceId = id;
+  document.getElementById("editSourceSubtitle").textContent = "ID: " + id;
+  document.getElementById("es_source_name").value       = src.source_name || "";
+  document.getElementById("es_listing_url").value       = src.listing_url || "";
+  document.getElementById("es_adapter_key").value       = src.adapter_key || "openai_listing_v1";
+  document.getElementById("es_api_base_url").value      = src.api_base_url || "";
+  document.getElementById("es_ics_url").value           = src.ics_url || "";
+  document.getElementById("es_poll_interval").value     = src.poll_interval_minutes || 360;
+  document.getElementById("es_attribution_label").value = src.attribution_label || "";
+  document.getElementById("es_notes").value             = src.notes || "";
+  document.getElementById("es_is_active").checked       = !!src.is_active;
+  document.getElementById("editSourceOverlay").classList.add("open");
+}
+
+function closeEditSource(e) {
+  if (e && e.target !== document.getElementById("editSourceOverlay")) return;
+  document.getElementById("editSourceOverlay").classList.remove("open");
+  editingSourceId = null;
+}
+
+async function saveEditSource() {
+  if (!editingSourceId) return;
+  const body = {
+    source_name:          document.getElementById("es_source_name").value.trim(),
+    listing_url:          document.getElementById("es_listing_url").value.trim() || null,
+    adapter_key:          document.getElementById("es_adapter_key").value,
+    api_base_url:         document.getElementById("es_api_base_url").value.trim() || null,
+    ics_url:              document.getElementById("es_ics_url").value.trim() || null,
+    poll_interval_minutes: Number(document.getElementById("es_poll_interval").value) || 360,
+    attribution_label:    document.getElementById("es_attribution_label").value.trim() || null,
+    notes:                document.getElementById("es_notes").value.trim() || null,
+    is_active:            document.getElementById("es_is_active").checked
+  };
+  if (!body.source_name) { toast("Source name is required", "err"); return; }
+  try {
+    await apiFetch("/api/sources/" + editingSourceId, { method: "PATCH", body });
+    toast("Source saved ✓", "ok");
+    closeEditSource();
+    await loadAll();
+  } catch (e) { toast("Save failed: " + e.message, "err"); }
+}
+
+/* ── Edit Event modal ────────────────────────────────────────────────────── */
+function toDatetimeLocal(iso) {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso);
+    // datetime-local format: YYYY-MM-DDTHH:mm
+    const pad = n => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch { return ""; }
+}
+
+function openEditEvent(id) {
+  const ev = allEvents.find(e => e.id === id);
+  if (!ev) return;
+  editingEventId = id;
+  const p = ev.community_hub_payload || {};
+  document.getElementById("editEventSubtitle").textContent = ev.source_name ? "Source: " + ev.source_name : "Event ID: " + id;
+  document.getElementById("ee_title").value                = ev.title || "";
+  document.getElementById("ee_organizational_sponsor").value = ev.organizational_sponsor || p.organizational_sponsor || "";
+  document.getElementById("ee_start_datetime").value       = toDatetimeLocal(ev.start_datetime);
+  document.getElementById("ee_end_datetime").value         = toDatetimeLocal(ev.end_datetime);
+  document.getElementById("ee_location_type").value        = ev.location_type || p.location_type || "";
+  document.getElementById("ee_location_or_address").value  = ev.location_or_address || p.location_or_address || "";
+  document.getElementById("ee_room_number").value          = ev.room_number || p.room_number || "";
+  document.getElementById("ee_event_link").value           = ev.event_link || p.event_link || "";
+  document.getElementById("ee_short_description").value    = ev.short_description || p.short_description_for_digital_signs || "";
+  document.getElementById("ee_extended_description").value = ev.extended_description || p.extended_description_for_web_and_newsletter || "";
+  document.getElementById("ee_artwork_url").value          = ev.artwork_url || p.artwork_upload_or_gallery || "";
+  document.getElementById("editEventOverlay").classList.add("open");
+}
+
+function closeEditEvent(e) {
+  if (e && e.target !== document.getElementById("editEventOverlay")) return;
+  document.getElementById("editEventOverlay").classList.remove("open");
+  editingEventId = null;
+}
+
+async function saveEditEvent() {
+  if (!editingEventId) return;
+  const body = {
+    title:                   document.getElementById("ee_title").value.trim() || null,
+    organizational_sponsor:  document.getElementById("ee_organizational_sponsor").value.trim() || null,
+    start_datetime:          document.getElementById("ee_start_datetime").value || null,
+    end_datetime:            document.getElementById("ee_end_datetime").value || null,
+    location_type:           document.getElementById("ee_location_type").value || null,
+    location_or_address:     document.getElementById("ee_location_or_address").value.trim() || null,
+    room_number:             document.getElementById("ee_room_number").value.trim() || null,
+    event_link:              document.getElementById("ee_event_link").value.trim() || null,
+    short_description:       document.getElementById("ee_short_description").value.trim() || null,
+    extended_description:    document.getElementById("ee_extended_description").value.trim() || null,
+    artwork_url:             document.getElementById("ee_artwork_url").value.trim() || null
+  };
+  try {
+    const res = await apiFetch("/api/events-staging/" + editingEventId, { method: "PATCH", body });
+    // Update in-memory list
+    const idx = allEvents.findIndex(e => e.id === editingEventId);
+    if (idx !== -1 && res.event) allEvents[idx] = { ...allEvents[idx], ...res.event };
+    toast("Event saved ✓", "ok");
+    closeEditEvent();
+    renderQueue();
+  } catch (e) { toast("Save failed: " + e.message, "err"); }
+}
 
 /* ── Utilities ───────────────────────────────────────────────────────────── */
 function setBusy(b) {
@@ -1056,10 +1274,10 @@ function renderMetrics(events, sources) {
   const section = document.getElementById("metricsSection");
   section.style.display = "block";
 
-  const total     = events.length;
-  const dups      = events.filter(e => e.is_duplicate).length;
-  const approved  = events.filter(e => e.review_status === "approved").length;
-  const pending   = events.filter(e => e.review_status === "pending" && !e.is_duplicate).length;
+  const total   = events.length;
+  const dups    = events.filter(e => e.is_duplicate).length;
+  const approved = events.filter(e => e.review_status === "approved").length;
+  const pending  = events.filter(e => e.review_status === "pending" && !e.is_duplicate).length;
   const dupRate   = total > 0 ? ((dups / total) * 100).toFixed(1) : "0";
   const approveRate = total > 0 ? ((approved / total) * 100).toFixed(1) : "0";
 
@@ -1069,7 +1287,6 @@ function renderMetrics(events, sources) {
     scopeCounts[s] = (scopeCounts[s] || 0) + 1;
   }
 
-  // Metrics cards
   document.getElementById("metricsGrid").innerHTML = `
     <div class="metric-card">
       <div class="metric-label">Total Events Processed</div>
@@ -1102,7 +1319,6 @@ function renderMetrics(events, sources) {
       <div class="metric-sub">Lorain County + NE Ohio</div>
     </div>`;
 
-  // Per-source breakdown
   const bySrc = {};
   for (const e of events) {
     const name = e.source_name || "Unknown";
@@ -1117,9 +1333,7 @@ function renderMetrics(events, sources) {
     .map(([name, d]) => `
       <div class="sb-row">
         <span style="min-width:180px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(name)}">${esc(name)}</span>
-        <div class="sb-bar-wrap">
-          <div class="sb-bar" style="width:${(d.total/maxTotal*100).toFixed(0)}%"></div>
-        </div>
+        <div class="sb-bar-wrap"><div class="sb-bar" style="width:${(d.total/maxTotal*100).toFixed(0)}%"></div></div>
         <span class="sb-count">${d.total}</span>
         <span style="font-size:11px;color:var(--muted);min-width:70px">${d.dups} dup · ${d.approved} sub</span>
       </div>`).join("");
@@ -1128,8 +1342,7 @@ function renderMetrics(events, sources) {
     ? `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px">Events per Source</div>${rows}`
     : "";
 
-  document.getElementById("metricsUpdated").textContent =
-    "as of " + new Date().toLocaleTimeString();
+  document.getElementById("metricsUpdated").textContent = "as of " + new Date().toLocaleTimeString();
 }
 
 /* ── Poster modal ────────────────────────────────────────────────────────── */
@@ -1173,7 +1386,6 @@ function handlePosterFile(input) {
     const img = document.getElementById("posterPreview");
     img.src = dataUrl;
     img.className = "poster-preview visible";
-    // Clear URL input to avoid confusion
     document.getElementById("posterUrl").value = "";
   };
   reader.readAsDataURL(file);
@@ -1182,13 +1394,9 @@ function handlePosterFile(input) {
 async function runPosterExtract() {
   const url        = document.getElementById("posterUrl").value.trim();
   const sourceName = document.getElementById("posterSourceName").value.trim();
+  if (!url && !posterBase64) { toast("Paste an image URL or upload a file first", "err"); return; }
 
-  if (!url && !posterBase64) {
-    toast("Paste an image URL or upload a file first", "err");
-    return;
-  }
-
-  const btn     = document.getElementById("extractBtn");
+  const btn = document.getElementById("extractBtn");
   const spinner = document.getElementById("extractSpinner");
   const status  = document.getElementById("extractStatus");
 
@@ -1199,18 +1407,16 @@ async function runPosterExtract() {
 
   try {
     const body = { source_name: sourceName || "Poster Upload" };
-    if (url)          body.image_url    = url;
-    else              { body.image_base64 = posterBase64; body.media_type = posterMimeType; }
+    if (url) body.image_url = url;
+    else     { body.image_base64 = posterBase64; body.media_type = posterMimeType; }
 
     const result = await apiFetch("/api/poster-extract", { method: "POST", body });
     lastExtracted = result;
 
-    // Render extracted fields
     const p = result.community_hub_payload || {};
     document.getElementById("extractTitle").textContent = p.title || "(no title)";
     document.getElementById("extractMeta").textContent =
-      [fmtDate(p.start_datetime), p.location_or_address, p.organizational_sponsor]
-        .filter(Boolean).join(" · ");
+      [fmtDate(p.start_datetime), p.location_or_address, p.organizational_sponsor].filter(Boolean).join(" · ");
 
     document.getElementById("extractFields").innerHTML = `
       <div class="fgrid" style="margin-top:10px">
@@ -1245,12 +1451,10 @@ async function savePosterToQueue() {
   if (!lastExtracted) return;
   const url        = document.getElementById("posterUrl").value.trim();
   const sourceName = document.getElementById("posterSourceName").value.trim();
-
   try {
     const body = { source_name: sourceName || "Poster Upload", save: true };
-    if (url)     body.image_url    = url;
-    else         { body.image_base64 = posterBase64; body.media_type = posterMimeType; }
-
+    if (url) body.image_url = url;
+    else     { body.image_base64 = posterBase64; body.media_type = posterMimeType; }
     await apiFetch("/api/poster-extract", { method: "POST", body });
     toast("Saved to review queue ✓", "ok");
     closePosterModal();
@@ -1260,7 +1464,93 @@ async function savePosterToQueue() {
   }
 }
 
+/* ── Pipeline stats ─────────────────────────────────────────────────────── */
+function renderPipeline(health, events, activity) {
+  const c = health.counts || {};
+  const candidates  = c.event_candidates ?? 0;
+  const staged      = c.events_staging ?? 0;
+  const tagged      = events.filter(e => e.hyperlocal_scope && e.hyperlocal_scope !== "unknown").length;
+  const deduped     = events.filter(e => e.is_duplicate !== null && e.is_duplicate !== undefined).length;
+  const submitted   = events.filter(e => e.review_status === "approved").length;
+
+  document.getElementById("pipeStat1").textContent = candidates;
+  document.getElementById("pipeStat2").textContent = staged;
+  document.getElementById("pipeStat3").textContent = tagged;
+  document.getElementById("pipeStat4").textContent = deduped;
+  document.getElementById("pipeStat5").textContent = submitted;
+
+  // Pulse the step that was most recently active based on the log
+  const STEP_TYPES = {
+    1: ["source_start","listing_done"],
+    2: ["detail_start","detail_done","detail_error"],
+    3: ["hyperlocal_start","hyperlocal_done","hyperlocal_error"],
+    4: ["dedupe_start","dedupe_done","dedupe_error"],
+    5: []
+  };
+  const recent = (activity || []).slice(0, 5);
+  let activeStep = null;
+  for (const entry of recent) {
+    for (const [step, types] of Object.entries(STEP_TYPES)) {
+      if (types.includes(entry.type)) { activeStep = Number(step); break; }
+    }
+    if (activeStep) break;
+  }
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById("pipeStep" + i);
+    if (el) el.classList.toggle("active", i === activeStep);
+  }
+}
+
+/* ── CSV Export ──────────────────────────────────────────────────────────── */
+function exportCsv() {
+  if (!allEvents.length) { toast("No events to export", "err"); return; }
+  const cols = ["id","title","organizational_sponsor","start_datetime","end_datetime",
+    "location_type","location_or_address","hyperlocal_scope","is_duplicate",
+    "duplicate_reason","review_status","source_name","source_event_url","discovered_at"];
+  const csvRow = row => cols.map(k => {
+    const v = row[k] ?? "";
+    return '"' + String(v).replace(/"/g, '""') + '"';
+  }).join(",");
+  const csv = [cols.join(","), ...allEvents.map(csvRow)].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href = url;
+  a.download = "oberlin-events-" + new Date().toISOString().slice(0,10) + ".csv";
+  a.click();
+  URL.revokeObjectURL(url);
+  toast("CSV downloaded ✓", "ok");
+}
+
 /* ── Boot ────────────────────────────────────────────────────────────────── */
+async function loadAll() {
+  try {
+    const [health, stagingRes, sourcesRes, runsRes, actRes] = await Promise.all([
+      apiFetch("/health"),
+      apiFetch("/api/events-staging?limit=200"),
+      apiFetch("/api/sources"),
+      apiFetch("/api/source-runs?limit=12"),
+      apiFetch("/api/agent-activity")
+    ]);
+
+    setOnline(true);
+    renderStats(health, stagingRes);
+    allSources = sourcesRes.sources || [];
+    renderSources(allSources);
+    renderRuns(runsRes.runs || []);
+    const activity = actRes.activity || [];
+    renderActivity(activity);
+    allEvents = stagingRes.events_staging || [];
+    renderQueue();
+    renderMetrics(allEvents, allSources);
+    renderPipeline(health, allEvents, activity);
+    document.getElementById("tsLabel").textContent = "Updated " + new Date().toLocaleTimeString();
+  } catch (e) {
+    setOnline(false);
+    console.error(e);
+  }
+}
+
 loadAll();
 setInterval(loadAll, 30_000);   // auto-refresh every 30 s
 </script>
