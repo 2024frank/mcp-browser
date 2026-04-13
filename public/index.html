@@ -306,6 +306,7 @@
     .sb-bar-wrap { flex: 1; background: var(--bg); border-radius: 100px; height: 8px; overflow: hidden; }
     .sb-bar { height: 100%; background: var(--primary); border-radius: 100px; transition: width .4s; }
     .sb-count { font-weight: 700; min-width: 28px; text-align: right; }
+    .quality-note { margin-top: 12px; font-size: 12px; color: var(--muted); line-height: 1.5; }
 
     /* ── Pipeline banner ──────────────────────────────────── */
     .pipeline-section { padding: 16px 24px 2px; }
@@ -480,7 +481,7 @@
           <div class="tabs">
             <button class="tab active" data-f="pending"   onclick="setFilter('pending')">Pending</button>
             <button class="tab"        data-f="duplicate" onclick="setFilter('duplicate')">Duplicates</button>
-            <button class="tab"        data-f="approved"  onclick="setFilter('approved')">Submitted</button>
+            <button class="tab"        data-f="approved"  onclick="setFilter('approved')">Approved</button>
             <button class="tab"        data-f="rejected"  onclick="setFilter('rejected')">Rejected</button>
             <button class="tab"        data-f="all"       onclick="setFilter('all')">All</button>
           </div>
@@ -498,7 +499,7 @@
 <div class="metrics-section" id="agentGradesSection">
   <div class="panel">
     <div class="panel-head" style="align-items:center">
-      <h3>Agent Performance — Grades &amp; Throughput</h3>
+      <h3>Pipeline Health — Throughput &amp; Coverage</h3>
       <div style="display:flex;gap:8px;align-items:center">
         <span class="ts" id="gradesUpdated"></span>
         <button class="btn btn-outline btn-xs" onclick="applySeed()" id="applySeedBtn" title="Push sources.example.json config updates into the live DB">⟳ Apply Source Config</button>
@@ -514,12 +515,14 @@
 <div class="metrics-section" id="metricsSection" style="display:none">
   <div class="panel">
     <div class="panel-head">
-      <h3>Research Metrics — AI Micro Grant Pilot</h3>
+      <h3>Research Metrics — Reviewed AI Accuracy</h3>
       <span class="ts" id="metricsUpdated"></span>
     </div>
     <div style="padding:18px">
       <div class="metrics-grid" id="metricsGrid"></div>
       <div class="source-breakdown" id="sourceBreakdown"></div>
+      <div class="source-breakdown" id="fieldAccuracyBreakdown"></div>
+      <div class="quality-note" id="qualityNote"></div>
     </div>
   </div>
 </div>
@@ -665,7 +668,8 @@
           <option value="">— select —</option>
           <option value="In-Person">In-Person</option>
           <option value="Online">Online</option>
-          <option value="Hybrid">Hybrid</option>
+          <option value="Both">Both</option>
+          <option value="Neither">Neither</option>
         </select>
       </div>
       <div class="input-group">
@@ -694,6 +698,16 @@
     <div class="input-group">
       <label>Artwork / Image URL</label>
       <input type="url" id="ee_artwork_url">
+    </div>
+    <div class="ig-grid-wrap">
+      <div class="input-group">
+        <label>Reviewer (optional)</label>
+        <input type="text" id="ee_reviewer_name" placeholder="e.g. FK">
+      </div>
+      <div class="input-group">
+        <label>Review Note (optional)</label>
+        <input type="text" id="ee_review_note" placeholder="What changed or why?">
+      </div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-outline" onclick="closeEditEvent()">Cancel</button>
@@ -736,9 +750,8 @@ function setOnline(yes) {
 }
 
 /* ── Stats ───────────────────────────────────────────────────────────────── */
-function renderStats(health, stagingRes) {
-  const pending = (stagingRes.events_staging || [])
-    .filter(e => e.review_status === "pending" && !e.is_duplicate).length;
+function renderStats(health, metrics) {
+  const pending = metrics?.agent5?.total_pending ?? 0;
   const c = health.counts || {};
   document.getElementById("statsRow").innerHTML = `
     <div class="stat-card">
@@ -854,10 +867,14 @@ function renderRuns(runs) {
   }
   document.getElementById("runsList").innerHTML = runs.slice(0, 10).map(r => {
     const ok = r.status === "success";
+    const durationMs = r.started_at && r.finished_at
+      ? Math.max(0, new Date(r.finished_at) - new Date(r.started_at))
+      : null;
+    const durationLabel = durationMs === null ? "running" : Math.round(durationMs / 1000) + "s";
     return `<div class="run-row">
       <span class="${ok ? "run-ok" : "run-err"}">${ok ? "✓" : "✗"}</span>
-      <span style="flex:1">${ago(r.started_at)}</span>
-      <span>${r.upserted_events ?? 0} evt${(r.upserted_events ?? 0) === 1 ? "" : "s"}</span>
+      <span style="flex:1" title="${esc(r.error_message || "")}">${ago(r.started_at)} · ${durationLabel}</span>
+      <span>${r.new_candidates ?? 0} new · ${r.upserted_events ?? 0} evt</span>
     </div>`;
   }).join("");
 }
@@ -923,8 +940,8 @@ function buildCard(ev) {
     : ev.review_status === "approved" ? "b-approved"
     : ev.review_status === "rejected" ? "b-rejected"
     : "b-pending";
-  const statusTxt = isDup ? "Duplicate"
-    : ev.review_status === "approved" ? "Submitted"
+    const statusTxt = isDup ? "Duplicate"
+    : ev.review_status === "approved" ? "Approved"
     : ev.review_status === "rejected" ? "Rejected"
     : "Pending";
 
@@ -1053,9 +1070,13 @@ function buildBody(ev, p, isDup) {
       <button class="btn btn-outline btn-sm" onclick="openEditEvent('${ev.id}');event.stopPropagation()">
         ✎ Edit Fields
       </button>
+      ${isDup ? `
+        <button class="btn btn-outline btn-sm" onclick="markUnique('${ev.id}');event.stopPropagation()">
+          Rescue from Duplicate
+        </button>` : ""}
       <div class="action-bar-space"></div>
       ${!isDup && ev.review_status !== "approved" ? `
-        <button class="btn btn-success btn-sm" onclick="setStatus('${ev.id}','approved');event.stopPropagation()">✓ Mark Submitted</button>` : ""}
+        <button class="btn btn-success btn-sm" onclick="setStatus('${ev.id}','approved');event.stopPropagation()">✓ Mark Approved</button>` : ""}
       ${ev.review_status !== "rejected" ? `
         <button class="btn btn-danger btn-sm" onclick="setStatus('${ev.id}','rejected');event.stopPropagation()">✕ Reject</button>` : `
         <button class="btn btn-muted btn-sm" onclick="setStatus('${ev.id}','pending');event.stopPropagation()">↩ Restore</button>`}
@@ -1092,14 +1113,33 @@ function ftall(label, value) {
 /* ── Actions ─────────────────────────────────────────────────────────────── */
 async function setStatus(id, status) {
   try {
-    await apiFetch("/api/events-staging/" + id, { method: "PATCH", body: { review_status: status } });
-    const ev = allEvents.find(e => e.id === id);
-    if (ev) ev.review_status = status;
+    const res = await apiFetch("/api/events-staging/" + id, { method: "PATCH", body: { review_status: status } });
+    const idx = allEvents.findIndex(e => e.id === id);
+    if (idx !== -1 && res.event) allEvents[idx] = { ...allEvents[idx], ...res.event };
     renderQueue();
-    toast(status === "approved" ? "Marked as submitted ✓"
+    toast(status === "approved" ? "Marked as approved ✓"
         : status === "rejected" ? "Event rejected"
         : "Restored to pending", status === "approved" ? "ok" : status === "rejected" ? "err" : "inf");
   } catch (e) { toast("Error: " + e.message, "err"); }
+}
+
+async function markUnique(id) {
+  try {
+    const res = await apiFetch("/api/events-staging/" + id, {
+      method: "PATCH",
+      body: {
+        is_duplicate: false,
+        duplicate_match_url: null,
+        duplicate_reason: "review_override_unique"
+      }
+    });
+    const idx = allEvents.findIndex(e => e.id === id);
+    if (idx !== -1 && res.event) allEvents[idx] = { ...allEvents[idx], ...res.event };
+    renderQueue();
+    toast("Event moved back into review queue", "ok");
+  } catch (e) {
+    toast("Duplicate rescue failed: " + e.message, "err");
+  }
 }
 
 async function runSource(id) {
@@ -1107,7 +1147,7 @@ async function runSource(id) {
   setBusy(true);
   try {
     const r = await apiFetch("/api/sources/" + id + "/run", { method: "POST" });
-    toast("Done — " + (r.upserted_events || 0) + " events staged", "ok");
+      toast("Done — " + (r.upserted_events || 0) + " events staged", "ok");
     await loadAll();
   } catch (e) { toast("Failed: " + e.message, "err"); }
   finally { setBusy(false); }
@@ -1247,6 +1287,8 @@ function openEditEvent(id) {
   document.getElementById("ee_short_description").value    = ev.short_description || p.short_description_for_digital_signs || "";
   document.getElementById("ee_extended_description").value = ev.extended_description || p.extended_description_for_web_and_newsletter || "";
   document.getElementById("ee_artwork_url").value          = ev.artwork_url || p.artwork_upload_or_gallery || "";
+  document.getElementById("ee_reviewer_name").value        = "";
+  document.getElementById("ee_review_note").value          = "";
   document.getElementById("editEventOverlay").classList.add("open");
 }
 
@@ -1269,7 +1311,9 @@ async function saveEditEvent() {
     event_link:              document.getElementById("ee_event_link").value.trim() || null,
     short_description:       document.getElementById("ee_short_description").value.trim() || null,
     extended_description:    document.getElementById("ee_extended_description").value.trim() || null,
-    artwork_url:             document.getElementById("ee_artwork_url").value.trim() || null
+    artwork_url:             document.getElementById("ee_artwork_url").value.trim() || null,
+    reviewer_name:           document.getElementById("ee_reviewer_name").value.trim() || null,
+    review_note:             document.getElementById("ee_review_note").value.trim() || null
   };
   try {
     const res = await apiFetch("/api/events-staging/" + editingEventId, { method: "PATCH", body });
@@ -1346,77 +1390,106 @@ function toast(msg, type = "inf") {
 }
 
 /* ── Research metrics ────────────────────────────────────────────────────── */
-function renderMetrics(events, sources) {
+function renderMetrics(metrics) {
   const section = document.getElementById("metricsSection");
   section.style.display = "block";
-
-  const total   = events.length;
-  const dups    = events.filter(e => e.is_duplicate).length;
-  const approved = events.filter(e => e.review_status === "approved").length;
-  const pending  = events.filter(e => e.review_status === "pending" && !e.is_duplicate).length;
-  const dupRate   = total > 0 ? ((dups / total) * 100).toFixed(1) : "0";
-  const approveRate = total > 0 ? ((approved / total) * 100).toFixed(1) : "0";
-
-  const scopeCounts = {};
-  for (const e of events) {
-    const s = e.hyperlocal_scope || "unknown";
-    scopeCounts[s] = (scopeCounts[s] || 0) + 1;
-  }
+  const accuracy = metrics?.accuracy || {};
+  const pending = metrics?.agent5?.total_pending || 0;
+  const reviewed = accuracy.total_reviewed || 0;
+  const comparable = accuracy.comparable_reviewed || 0;
+  const exactMatch = accuracy.exact_match_rate || 0;
+  const correctionRate = accuracy.correction_rate || 0;
+  const avgChanged = accuracy.average_changed_fields || 0;
+  const duplicateOverrides = accuracy.duplicate_overrides || 0;
+  const baselineCoverage = accuracy.baseline_coverage || 0;
+  const fieldAccuracy = accuracy.field_accuracy || [];
+  const sourceRows = accuracy.by_source || [];
 
   document.getElementById("metricsGrid").innerHTML = `
     <div class="metric-card">
-      <div class="metric-label">Total Events Processed</div>
-      <div class="metric-value">${total}</div>
-      <div class="metric-sub">across all sources</div>
+      <div class="metric-label">Reviewed Events</div>
+      <div class="metric-value">${reviewed}</div>
+      <div class="metric-sub">items touched by a human reviewer</div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">Duplicate Rate</div>
-      <div class="metric-value" style="color:var(--warning)">${dupRate}%</div>
-      <div class="metric-sub">${dups} of ${total} detected as duplicate</div>
+      <div class="metric-label">Comparable Baselines</div>
+      <div class="metric-value">${comparable}</div>
+      <div class="metric-sub">${baselineCoverage}% of reviewed items have a saved AI baseline</div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">Submitted to Hub</div>
-      <div class="metric-value" style="color:var(--success)">${approved}</div>
-      <div class="metric-sub">${approveRate}% submission rate</div>
+      <div class="metric-label">AI Exact Match Rate</div>
+      <div class="metric-value" style="color:var(--success)">${exactMatch}%</div>
+      <div class="metric-sub">reviewed items kept as-is</div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">Awaiting Review</div>
+      <div class="metric-label">Human Correction Rate</div>
+      <div class="metric-value" style="color:var(--warning)">${correctionRate}%</div>
+      <div class="metric-sub">${accuracy.reviewed_with_corrections || 0} reviewed items changed</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Avg Fields Changed</div>
+      <div class="metric-value">${avgChanged}</div>
+      <div class="metric-sub">per comparable reviewed item</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Duplicate Overrides</div>
+      <div class="metric-value">${duplicateOverrides}</div>
+      <div class="metric-sub">rows rescued or reclassified by humans</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Pending Review</div>
       <div class="metric-value" style="color:var(--warning)">${pending}</div>
       <div class="metric-sub">events pending human review</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-label">Hyperlocal Events</div>
-      <div class="metric-value">${scopeCounts["hyperlocal"] || 0}</div>
-      <div class="metric-sub">within Oberlin city limits</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-label">Regional Events</div>
-      <div class="metric-value">${(scopeCounts["lorain_county"] || 0) + (scopeCounts["northeast_ohio"] || 0)}</div>
-      <div class="metric-sub">Lorain County + NE Ohio</div>
     </div>`;
 
-  const bySrc = {};
-  for (const e of events) {
-    const name = e.source_name || "Unknown";
-    if (!bySrc[name]) bySrc[name] = { total: 0, dups: 0, approved: 0 };
-    bySrc[name].total++;
-    if (e.is_duplicate) bySrc[name].dups++;
-    if (e.review_status === "approved") bySrc[name].approved++;
-  }
-  const maxTotal = Math.max(...Object.values(bySrc).map(x => x.total), 1);
-  const rows = Object.entries(bySrc)
-    .sort((a, b) => b[1].total - a[1].total)
-    .map(([name, d]) => `
+  const maxReviewed = Math.max(...sourceRows.map((x) => x.reviewed_count || 0), 1);
+  const sourceBreakdown = sourceRows
+    .map((d) => `
       <div class="sb-row">
-        <span style="min-width:180px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(name)}">${esc(name)}</span>
-        <div class="sb-bar-wrap"><div class="sb-bar" style="width:${(d.total/maxTotal*100).toFixed(0)}%"></div></div>
-        <span class="sb-count">${d.total}</span>
-        <span style="font-size:11px;color:var(--muted);min-width:70px">${d.dups} dup · ${d.approved} sub</span>
+        <span style="min-width:180px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(d.source_name)}">${esc(d.source_name)}</span>
+        <div class="sb-bar-wrap"><div class="sb-bar" style="width:${(d.reviewed_count/maxReviewed*100).toFixed(0)}%"></div></div>
+        <span class="sb-count">${d.reviewed_count}</span>
+        <span style="font-size:11px;color:var(--muted);min-width:138px">${d.correction_rate}% corrected · ${d.comparable_count} comparable</span>
       </div>`).join("");
 
-  document.getElementById("sourceBreakdown").innerHTML = rows
-    ? `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px">Events per Source</div>${rows}`
+  const fieldLabels = {
+    title: "Title",
+    organizational_sponsor: "Sponsor",
+    start_datetime: "Start Time",
+    end_datetime: "End Time",
+    location_type: "Location Type",
+    location_or_address: "Location",
+    room_number: "Room",
+    event_link: "Event Link",
+    short_description: "Short Description",
+    extended_description: "Extended Description",
+    artwork_url: "Artwork",
+    is_duplicate: "Duplicate Flag",
+    duplicate_match_url: "Duplicate Match URL",
+    duplicate_reason: "Duplicate Reason",
+    review_status: "Review Status"
+  };
+  const maxFieldRate = Math.max(...fieldAccuracy.map((x) => x.change_rate || 0), 1);
+  const fieldBreakdown = fieldAccuracy
+    .filter((row) => row.reviewed_count > 0)
+    .slice(0, 8)
+    .map((row) => `
+      <div class="sb-row">
+        <span style="min-width:180px;font-weight:500">${esc(fieldLabels[row.field] || row.field)}</span>
+        <div class="sb-bar-wrap"><div class="sb-bar" style="width:${((row.change_rate || 0)/maxFieldRate*100).toFixed(0)}%"></div></div>
+        <span class="sb-count">${row.change_rate}%</span>
+        <span style="font-size:11px;color:var(--muted);min-width:118px">${row.changed_count} changed · ${row.exact_match_rate}% exact</span>
+      </div>`).join("");
+
+  document.getElementById("sourceBreakdown").innerHTML = sourceBreakdown
+    ? `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px">Correction Rate by Source</div>${sourceBreakdown}`
     : "";
+  document.getElementById("fieldAccuracyBreakdown").innerHTML = fieldBreakdown
+    ? `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px">Most-Corrected Fields</div>${fieldBreakdown}`
+    : "";
+  document.getElementById("qualityNote").textContent = comparable > 0
+    ? `Accuracy metrics are computed against the saved AI baseline for reviewed records, not against the live queue sample.`
+    : `Accuracy metrics will appear after reviewers edit, approve, reject, or rescue items from the duplicate queue.`;
 
   document.getElementById("metricsUpdated").textContent = "as of " + new Date().toLocaleTimeString();
 }
@@ -1675,15 +1748,16 @@ function renderAgentGrades(m) {
         <span class="grade-badge grade-${dupRate<10?"A":dupRate<25?"B":dupRate<45?"C":"D"}">${dupRate<10?"A":dupRate<25?"B":dupRate<45?"C":"D"}</span>
       </div>
       <div class="grade-card">
-        <div class="grade-label">✅ Agent 5 — Human Review</div>
+        <div class="grade-label">✅ Agent 5 — Review Queue</div>
         <div class="grade-stat">${(a5.total_approved||0).toLocaleString()}</div>
-        <div class="grade-sub">${appRate}% submitted · ${(a5.total_pending||0)} pending</div>
+        <div class="grade-sub">${appRate}% approved · ${(a5.total_pending||0)} pending</div>
         <div class="grade-bar-wrap"><div class="grade-bar bar-green" style="width:${appRate}%"></div></div>
         <span class="grade-badge grade-${a5Grade}">${a5Grade}</span>
       </div>
     </div>
     <div style="font-size:11px;color:var(--muted)">
       Grade scale: <strong>A</strong> ≥90% · <strong>B</strong> ≥75% · <strong>C</strong> ≥55% · <strong>D</strong> ≥35% · <strong>F</strong> &lt;35%
+      &nbsp;·&nbsp; This panel reflects pipeline health and coverage, not measured extraction accuracy.
       &nbsp;·&nbsp; For Agent 4, lower duplicate rate = higher grade.
       &nbsp;·&nbsp; Updated ${new Date().toLocaleTimeString()}
     </div>`;
@@ -1774,7 +1848,7 @@ async function loadAll() {
     ]);
 
     setOnline(true);
-    renderStats(health, stagingRes);
+    renderStats(health, metricsRes);
     applyEnvWarnings(health.env || {});
     allSources = sourcesRes.sources || [];
     renderSources(allSources);
@@ -1783,7 +1857,7 @@ async function loadAll() {
     renderActivity(activity);
     allEvents = stagingRes.events_staging || [];
     renderQueue();
-    renderMetrics(allEvents, allSources);
+    renderMetrics(metricsRes);
     renderAgentGrades(metricsRes);
     renderPipeline(health, allEvents, activity);
     document.getElementById("tsLabel").textContent = "Updated " + new Date().toLocaleTimeString();

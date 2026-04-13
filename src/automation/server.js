@@ -147,30 +147,48 @@ app.get("/api/events-staging", (request, response) => {
 app.patch("/api/events-staging/:id", (request, response) => {
   const body = request.body || {};
 
-  // Field-edit mode — body contains editable content fields
-  const editableFields = ["title","organizational_sponsor","start_datetime","end_datetime",
-    "location_type","location_or_address","room_number","event_link",
-    "short_description","extended_description","artwork_url"];
-  const hasFields = editableFields.some(k => k in body);
+  const editableFields = [
+    "title",
+    "organizational_sponsor",
+    "start_datetime",
+    "end_datetime",
+    "location_type",
+    "location_or_address",
+    "room_number",
+    "event_link",
+    "short_description",
+    "extended_description",
+    "artwork_url",
+    "is_duplicate",
+    "duplicate_match_url",
+    "duplicate_reason"
+  ];
+  const hasEditableFields = editableFields.some((key) => key in body);
+  const hasReviewStatus = "review_status" in body;
 
-  if (hasFields) {
-    const updated = repository.patchStagingFields(request.params.id, body);
-    if (!updated) {
-      response.status(404).json({ error: "Staging event not found" });
+  if (!hasEditableFields && !hasReviewStatus) {
+    response.status(400).json({
+      error: "Provide editable fields and/or review_status"
+    });
+    return;
+  }
+
+  if (hasReviewStatus) {
+    const valid = ["pending", "approved", "rejected"];
+    if (!valid.includes(body.review_status)) {
+      response.status(400).json({ error: `review_status must be one of: ${valid.join(", ")}` });
       return;
     }
-    response.json({ event: updated });
-    return;
   }
 
-  // Review-status mode
-  const { review_status } = body;
-  const valid = ["pending", "approved", "rejected"];
-  if (!valid.includes(review_status)) {
-    response.status(400).json({ error: `review_status must be one of: ${valid.join(", ")}` });
-    return;
-  }
-  const updated = repository.updateStagingReviewStatus(request.params.id, review_status);
+  const updated = repository.reviewStagingEvent(
+    request.params.id,
+    body,
+    {
+      reviewer_name: body.reviewer_name || null,
+      review_note: body.review_note || null
+    }
+  );
   if (!updated) {
     response.status(404).json({ error: "Staging event not found" });
     return;

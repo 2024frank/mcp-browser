@@ -104,16 +104,27 @@ ${JSON.stringify(context.hub, null, 2)}`;
   const confidence = Number(parsed.confidence);
   const dup = parsed.is_duplicate === true;
   const confidentEnough = !Number.isNaN(confidence) && confidence >= minConfidence;
+  const knownUrls = new Set([
+    ...context.staging.flatMap((row) => [row.source_event_url]),
+    ...context.hub.flatMap((row) => [row.source_event_url, row.community_hub_url])
+  ].filter(Boolean));
+  const selectedUrl =
+    typeof parsed.duplicate_match_url === "string" ? String(parsed.duplicate_match_url) : null;
+  const validSelectedUrl = selectedUrl && knownUrls.has(selectedUrl);
 
-  if (dup && confidentEnough && parsed.duplicate_match_url) {
+  if (dup && confidentEnough && validSelectedUrl) {
     return {
       applied: true,
       is_duplicate: true,
-      duplicate_match_url: String(parsed.duplicate_match_url),
+      duplicate_match_url: selectedUrl,
       duplicate_reason: `llm_duplicate_compare:${parsed.duplicate_reason || "model_match"}`,
       duplicate_agent_confidence: confidence
     };
   }
 
-  return { applied: false, duplicate_agent_confidence: confidence };
+  return {
+    applied: false,
+    duplicate_agent_confidence: confidence,
+    invalid_match_url: dup && confidentEnough && !!selectedUrl && !validSelectedUrl
+  };
 }

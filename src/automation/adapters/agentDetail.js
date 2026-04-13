@@ -81,5 +81,11 @@ Link hint from listing: ${candidate.title_hint || "n/a"}`;
   partial.source_event_url = partial.source_event_url || eventUrl;
 
   const hub = normalizeDashboardSubmission(partial, source);
-  return dashboardPayloadToStagingEvent(hub, source, candidate);
+  const stagingEvent = dashboardPayloadToStagingEvent(hub, source, candidate);
+  stagingEvent.extraction_metadata = {
+    extractor: "openai_detail_v1",
+    model,
+    source_event_url: eventUrl
+  };
+  return stagingEvent;
 }

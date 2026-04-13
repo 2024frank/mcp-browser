@@ -24,6 +24,15 @@ const VALID_SCOPES = [
   "unknown"
 ];
 
+const VALID_GEOGRAPHIC_TAGS = new Set([
+  "oberlin",
+  "lorain-county",
+  "northeast-ohio",
+  "ohio",
+  "national",
+  "online"
+]);
+
 /**
  * Hyperlocal classifier agent (OpenAI Responses API — no browser needed).
  *
@@ -119,7 +128,9 @@ confidence should be a float 0–1 reflecting how certain you are of the classif
 
   const scope = VALID_SCOPES.includes(parsed.scope) ? parsed.scope : "unknown";
   const geographic_tags = Array.isArray(parsed.geographic_tags)
-    ? parsed.geographic_tags.filter((t) => typeof t === "string")
+    ? [...new Set(parsed.geographic_tags)]
+        .filter((t) => typeof t === "string")
+        .filter((t) => VALID_GEOGRAPHIC_TAGS.has(t))
     : [];
   const confidence = Number.isFinite(Number(parsed.confidence))
     ? Math.min(1, Math.max(0, Number(parsed.confidence)))

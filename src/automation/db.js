@@ -74,6 +74,9 @@ function stagingRowToObject(row) {
     duplicate_reason: row.duplicate_reason,
     confidence: row.confidence,
     review_status: row.review_status,
+    ai_baseline_payload: parseJson(row.ai_baseline_payload_json, null),
+    extraction_metadata: parseJson(row.extraction_metadata_json, {}),
+    reviewed_at: row.reviewed_at || null,
     hyperlocal_scope: row.hyperlocal_scope || null,
     geographic_tags: parseJson(row.geographic_tags_json, []),
     community_hub_payload: parseJson(row.community_hub_payload_json, {}),
@@ -94,6 +97,90 @@ function runRowToObject(row) {
     upserted_events: row.upserted_events,
     error_message: row.error_message,
     summary: parseJson(row.summary_json, {})
+  };
+}
+
+const REVIEW_TRACKED_FIELDS = [
+  "title",
+  "organizational_sponsor",
+  "start_datetime",
+  "end_datetime",
+  "location_type",
+  "location_or_address",
+  "room_number",
+  "event_link",
+  "short_description",
+  "extended_description",
+  "artwork_url",
+  "is_duplicate",
+  "duplicate_match_url",
+  "duplicate_reason",
+  "review_status"
+];
+
+const ACCURACY_COMPARISON_FIELDS = REVIEW_TRACKED_FIELDS.filter(
+  (field) => field !== "review_status"
+);
+
+function buildReviewSnapshot(event) {
+  return {
+    title: event.title || null,
+    organizational_sponsor: event.organizational_sponsor || null,
+    start_datetime: event.start_datetime || null,
+    end_datetime: event.end_datetime || null,
+    location_type: event.location_type || null,
+    location_or_address: event.location_or_address || null,
+    room_number: event.room_number || null,
+    event_link: event.event_link || null,
+    short_description: event.short_description || null,
+    extended_description: event.extended_description || null,
+    artwork_url: event.artwork_url || null,
+    is_duplicate:
+      event.is_duplicate === null || event.is_duplicate === undefined
+        ? null
+        : Boolean(event.is_duplicate),
+    duplicate_match_url: event.duplicate_match_url || null,
+    duplicate_reason: event.duplicate_reason || null,
+    review_status: event.review_status || "pending"
+  };
+}
+
+function diffReviewFields(before, after) {
+  return REVIEW_TRACKED_FIELDS.filter((field) => {
+    return JSON.stringify(before?.[field] ?? null) !== JSON.stringify(after?.[field] ?? null);
+  });
+}
+
+function syncCommunityHubPayload(payload, snapshot) {
+  return {
+    ...(payload || {}),
+    title: snapshot.title,
+    organizational_sponsor: snapshot.organizational_sponsor,
+    start_datetime: snapshot.start_datetime,
+    end_datetime: snapshot.end_datetime,
+    location_type: snapshot.location_type,
+    location_or_address: snapshot.location_or_address,
+    room_number: snapshot.room_number,
+    event_link: snapshot.event_link,
+    short_description_for_digital_signs: snapshot.short_description || "",
+    extended_description_for_web_and_newsletter: snapshot.extended_description || "",
+    artwork_upload_or_gallery: snapshot.artwork_url || null,
+    is_duplicate: snapshot.is_duplicate,
+    duplicate_match_url: snapshot.duplicate_match_url
+  };
+}
+
+function reviewRowToObject(row) {
+  return {
+    id: row.id,
+    staging_event_id: row.staging_event_id,
+    review_action: row.review_action,
+    reviewer_name: row.reviewer_name,
+    review_note: row.review_note,
+    changed_fields: parseJson(row.changed_fields_json, []),
+    before_snapshot: parseJson(row.before_snapshot_json, {}),
+    after_snapshot: parseJson(row.after_snapshot_json, {}),
+    created_at: row.created_at
   };
 }
 
@@ -165,6 +252,9 @@ export function createRepository(config) {
       duplicate_reason TEXT,
       confidence REAL,
       review_status TEXT NOT NULL DEFAULT 'pending',
+      ai_baseline_payload_json TEXT,
+      extraction_metadata_json TEXT NOT NULL DEFAULT '{}',
+      reviewed_at TEXT,
       community_hub_payload_json TEXT NOT NULL DEFAULT '{}',
       raw_payload_json TEXT,
       discovered_at TEXT NOT NULL,
@@ -197,16 +287,33 @@ export function createRepository(config) {
       summary_json TEXT NOT NULL DEFAULT '{}'
     );
 
+    CREATE TABLE IF NOT EXISTS staging_event_reviews (
+      id TEXT PRIMARY KEY,
+      staging_event_id TEXT NOT NULL,
+      review_action TEXT NOT NULL,
+      reviewer_name TEXT,
+      review_note TEXT,
+      changed_fields_json TEXT NOT NULL DEFAULT '[]',
+      before_snapshot_json TEXT NOT NULL DEFAULT '{}',
+      after_snapshot_json TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_sources_next_run_at ON sources(next_run_at);
     CREATE INDEX IF NOT EXISTS idx_event_candidates_source_id ON event_candidates(source_id);
     CREATE INDEX IF NOT EXISTS idx_events_staging_source_id ON events_staging(source_id);
     CREATE INDEX IF NOT EXISTS idx_source_runs_source_id ON source_runs(source_id);
+    CREATE INDEX IF NOT EXISTS idx_staging_event_reviews_event_id ON staging_event_reviews(staging_event_id);
+    CREATE INDEX IF NOT EXISTS idx_staging_event_reviews_created_at ON staging_event_reviews(created_at);
   `);
 
   // Additive migrations — safe to run on existing databases
   for (const sql of [
     `ALTER TABLE events_staging ADD COLUMN hyperlocal_scope TEXT`,
-    `ALTER TABLE events_staging ADD COLUMN geographic_tags_json TEXT NOT NULL DEFAULT '[]'`
+    `ALTER TABLE events_staging ADD COLUMN geographic_tags_json TEXT NOT NULL DEFAULT '[]'`,
+    `ALTER TABLE events_staging ADD COLUMN ai_baseline_payload_json TEXT`,
+    `ALTER TABLE events_staging ADD COLUMN extraction_metadata_json TEXT NOT NULL DEFAULT '{}'`,
+    `ALTER TABLE events_staging ADD COLUMN reviewed_at TEXT`
   ]) {
     try {
       db.exec(sql);
@@ -310,7 +417,8 @@ export function createRepository(config) {
         location_type, location_or_address, room_number, event_link, short_description,
         extended_description, artwork_url, source_name, source_domain, source_listing_url,
         source_event_url, is_duplicate, duplicate_match_url, duplicate_reason, confidence,
-        review_status, hyperlocal_scope, geographic_tags_json,
+        review_status, ai_baseline_payload_json, extraction_metadata_json, reviewed_at,
+        hyperlocal_scope, geographic_tags_json,
         community_hub_payload_json, raw_payload_json, discovered_at, updated_at
       ) VALUES (
         @id, @source_id, @source_candidate_id, @external_event_id, @title,
@@ -318,7 +426,8 @@ export function createRepository(config) {
         @location_type, @location_or_address, @room_number, @event_link, @short_description,
         @extended_description, @artwork_url, @source_name, @source_domain, @source_listing_url,
         @source_event_url, @is_duplicate, @duplicate_match_url, @duplicate_reason, @confidence,
-        @review_status, @hyperlocal_scope, @geographic_tags_json,
+        @review_status, @ai_baseline_payload_json, @extraction_metadata_json, @reviewed_at,
+        @hyperlocal_scope, @geographic_tags_json,
         @community_hub_payload_json, @raw_payload_json, @discovered_at, @updated_at
       )
     `),
@@ -346,10 +455,36 @@ export function createRepository(config) {
           duplicate_reason = @duplicate_reason,
           confidence = @confidence,
           review_status = @review_status,
+          ai_baseline_payload_json = @ai_baseline_payload_json,
+          extraction_metadata_json = @extraction_metadata_json,
+          reviewed_at = @reviewed_at,
           hyperlocal_scope = @hyperlocal_scope,
           geographic_tags_json = @geographic_tags_json,
           community_hub_payload_json = @community_hub_payload_json,
           raw_payload_json = @raw_payload_json,
+          updated_at = @updated_at
+      WHERE id = @id
+    `),
+    reviewUpdateStaging: db.prepare(`
+      UPDATE events_staging
+      SET title = @title,
+          organizational_sponsor = @organizational_sponsor,
+          start_datetime = @start_datetime,
+          end_datetime = @end_datetime,
+          location_type = @location_type,
+          location_or_address = @location_or_address,
+          room_number = @room_number,
+          event_link = @event_link,
+          short_description = @short_description,
+          extended_description = @extended_description,
+          artwork_url = @artwork_url,
+          is_duplicate = @is_duplicate,
+          duplicate_match_url = @duplicate_match_url,
+          duplicate_reason = @duplicate_reason,
+          review_status = @review_status,
+          ai_baseline_payload_json = @ai_baseline_payload_json,
+          community_hub_payload_json = @community_hub_payload_json,
+          reviewed_at = @reviewed_at,
           updated_at = @updated_at
       WHERE id = @id
     `),
@@ -416,24 +551,19 @@ export function createRepository(config) {
     listFingerprintsForSource: db.prepare(`SELECT fingerprint FROM event_candidates WHERE source_id = ?`),
     countTable: (table) => db.prepare(`SELECT COUNT(*) AS count FROM ${table}`),
     getStagingById: db.prepare(`SELECT * FROM events_staging WHERE id = ?`),
-    patchStagingReviewStatus: db.prepare(`
-      UPDATE events_staging SET review_status = @review_status, updated_at = @updated_at WHERE id = @id
+    insertReviewEntry: db.prepare(`
+      INSERT INTO staging_event_reviews (
+        id, staging_event_id, review_action, reviewer_name, review_note,
+        changed_fields_json, before_snapshot_json, after_snapshot_json, created_at
+      ) VALUES (
+        @id, @staging_event_id, @review_action, @reviewer_name, @review_note,
+        @changed_fields_json, @before_snapshot_json, @after_snapshot_json, @created_at
+      )
     `),
-    patchStagingFields: db.prepare(`
-      UPDATE events_staging SET
-        title = @title,
-        organizational_sponsor = @organizational_sponsor,
-        start_datetime = @start_datetime,
-        end_datetime = @end_datetime,
-        location_type = @location_type,
-        location_or_address = @location_or_address,
-        room_number = @room_number,
-        event_link = @event_link,
-        short_description = @short_description,
-        extended_description = @extended_description,
-        artwork_url = @artwork_url,
-        updated_at = @updated_at
-      WHERE id = @id
+    listRecentReviews: db.prepare(`
+      SELECT * FROM staging_event_reviews
+      ORDER BY created_at DESC
+      LIMIT ?
     `)
   };
 
@@ -614,6 +744,11 @@ export function createRepository(config) {
         duplicate_reason: event.duplicate_reason || null,
         confidence: event.confidence ?? null,
         review_status: event.review_status || "pending",
+        ai_baseline_payload_json: existing?.ai_baseline_payload_json || null,
+        extraction_metadata_json: JSON.stringify(
+          event.extraction_metadata ?? parseJson(existing?.extraction_metadata_json, {})
+        ),
+        reviewed_at: existing?.reviewed_at || null,
         hyperlocal_scope: event.hyperlocal_scope || null,
         geographic_tags_json: JSON.stringify(event.geographic_tags || []),
         community_hub_payload_json: JSON.stringify(event.community_hub_payload || {}),
@@ -629,6 +764,125 @@ export function createRepository(config) {
 
       statements.insertStaging.run(row);
       return { inserted: true, record: stagingRowToObject(row) };
+    },
+
+    reviewStagingEvent(id, input = {}, meta = {}) {
+      const current = this.getStagingById(id);
+      if (!current) {
+        return null;
+      }
+
+      const before = buildReviewSnapshot(current);
+      const next = {
+        ...current
+      };
+
+      for (const field of [
+        "title",
+        "organizational_sponsor",
+        "start_datetime",
+        "end_datetime",
+        "location_type",
+        "location_or_address",
+        "room_number",
+        "event_link",
+        "short_description",
+        "extended_description",
+        "artwork_url"
+      ]) {
+        if (Object.prototype.hasOwnProperty.call(input, field)) {
+          next[field] = input[field] ?? null;
+        }
+      }
+
+      if (Object.prototype.hasOwnProperty.call(input, "is_duplicate")) {
+        next.is_duplicate =
+          input.is_duplicate === null || input.is_duplicate === undefined
+            ? null
+            : Boolean(input.is_duplicate);
+      }
+      if (Object.prototype.hasOwnProperty.call(input, "duplicate_match_url")) {
+        next.duplicate_match_url = input.duplicate_match_url || null;
+      }
+      if (Object.prototype.hasOwnProperty.call(input, "duplicate_reason")) {
+        next.duplicate_reason = input.duplicate_reason || null;
+      }
+      if (Object.prototype.hasOwnProperty.call(input, "review_status")) {
+        next.review_status = input.review_status || current.review_status || "pending";
+      }
+
+      if (next.is_duplicate !== true) {
+        next.duplicate_match_url = Object.prototype.hasOwnProperty.call(input, "duplicate_match_url")
+          ? next.duplicate_match_url || null
+          : null;
+        next.duplicate_reason = Object.prototype.hasOwnProperty.call(input, "duplicate_reason")
+          ? next.duplicate_reason || null
+          : next.is_duplicate === false
+            ? "review_override_unique"
+            : null;
+      }
+
+      const after = buildReviewSnapshot(next);
+      const changedFields = diffReviewFields(before, after);
+      const hasReviewMeta = Boolean(meta.reviewer_name || meta.review_note);
+
+      if (!changedFields.length && !hasReviewMeta) {
+        return current;
+      }
+
+      const baseline = current.ai_baseline_payload || before;
+      const reviewedAt = current.reviewed_at || nowIso();
+      const action = changedFields.some((field) =>
+        ["is_duplicate", "duplicate_match_url", "duplicate_reason"].includes(field)
+      )
+        ? "duplicate_override"
+        : changedFields.every((field) => field === "review_status")
+          ? "status_change"
+          : "field_edit";
+
+      statements.reviewUpdateStaging.run({
+        id: current.id,
+        title: next.title || null,
+        organizational_sponsor: next.organizational_sponsor || null,
+        start_datetime: next.start_datetime || null,
+        end_datetime: next.end_datetime || null,
+        location_type: next.location_type || null,
+        location_or_address: next.location_or_address || null,
+        room_number: next.room_number || null,
+        event_link: next.event_link || null,
+        short_description: next.short_description || null,
+        extended_description: next.extended_description || null,
+        artwork_url: next.artwork_url || null,
+        is_duplicate:
+          next.is_duplicate === null || next.is_duplicate === undefined
+            ? null
+            : next.is_duplicate
+              ? 1
+              : 0,
+        duplicate_match_url: next.duplicate_match_url || null,
+        duplicate_reason: next.duplicate_reason || null,
+        review_status: next.review_status || "pending",
+        ai_baseline_payload_json: JSON.stringify(baseline),
+        community_hub_payload_json: JSON.stringify(
+          syncCommunityHubPayload(current.community_hub_payload, after)
+        ),
+        reviewed_at: reviewedAt,
+        updated_at: nowIso()
+      });
+
+      statements.insertReviewEntry.run({
+        id: makeId("rev"),
+        staging_event_id: current.id,
+        review_action: action,
+        reviewer_name: meta.reviewer_name || null,
+        review_note: meta.review_note || null,
+        changed_fields_json: JSON.stringify(changedFields),
+        before_snapshot_json: JSON.stringify(before),
+        after_snapshot_json: JSON.stringify(after),
+        created_at: nowIso()
+      });
+
+      return this.getStagingById(id);
     },
 
     addCommunityHubEvent(input) {
@@ -847,12 +1101,120 @@ export function createRepository(config) {
       const totalApproved   = db.prepare(`SELECT COUNT(*) as n FROM events_staging WHERE review_status='approved'`).get().n;
       const totalPending    = db.prepare(`SELECT COUNT(*) as n FROM events_staging WHERE review_status='pending' AND (is_duplicate IS NULL OR is_duplicate=0)`).get().n;
       const recentRuns      = db.prepare(`SELECT source_id, status, new_candidates, upserted_events, started_at, finished_at FROM source_runs ORDER BY started_at DESC LIMIT 50`).all();
+      const reviewedRows    = db.prepare(`SELECT * FROM events_staging WHERE reviewed_at IS NOT NULL ORDER BY reviewed_at DESC`).all();
+      const reviewEvents = reviewedRows.map(stagingRowToObject);
+      const recentReviews = statements.listRecentReviews.all(12).map(reviewRowToObject);
+      const fieldStats = Object.fromEntries(
+        ACCURACY_COMPARISON_FIELDS.map((field) => [
+          field,
+          { field, reviewed_count: 0, changed_count: 0, unchanged_count: 0, exact_match_rate: 0, change_rate: 0 }
+        ])
+      );
+      let comparableReviewed = 0;
+      let correctedEvents = 0;
+      let changedFieldTotal = 0;
+      let duplicateOverrides = 0;
+      const bySource = {};
+
+      for (const event of reviewEvents) {
+        const baseline = event.ai_baseline_payload;
+        const sourceName = event.source_name || event.source_id || "Unknown";
+        if (!bySource[sourceName]) {
+          bySource[sourceName] = {
+            source_name: sourceName,
+            reviewed_count: 0,
+            comparable_count: 0,
+            corrected_count: 0,
+            approved_count: 0,
+            correction_rate: 0
+          };
+        }
+        bySource[sourceName].reviewed_count += 1;
+        if (event.review_status === "approved") {
+          bySource[sourceName].approved_count += 1;
+        }
+
+        if (!baseline) {
+          continue;
+        }
+
+        comparableReviewed += 1;
+        bySource[sourceName].comparable_count += 1;
+        const changed = ACCURACY_COMPARISON_FIELDS.filter((field) => {
+          return JSON.stringify(baseline?.[field] ?? null) !== JSON.stringify(event?.[field] ?? null);
+        });
+        const changedSet = new Set(changed);
+        if (changed.length > 0) {
+          correctedEvents += 1;
+          bySource[sourceName].corrected_count += 1;
+        }
+        if (
+          changedSet.has("is_duplicate") ||
+          changedSet.has("duplicate_match_url") ||
+          changedSet.has("duplicate_reason")
+        ) {
+          duplicateOverrides += 1;
+        }
+        changedFieldTotal += changed.length;
+
+        for (const field of ACCURACY_COMPARISON_FIELDS) {
+          fieldStats[field].reviewed_count += 1;
+          if (changedSet.has(field)) {
+            fieldStats[field].changed_count += 1;
+          } else {
+            fieldStats[field].unchanged_count += 1;
+          }
+        }
+      }
+
+      const fieldAccuracy = Object.values(fieldStats)
+        .map((stat) => {
+          const reviewedCount = stat.reviewed_count;
+          const exactMatchRate =
+            reviewedCount > 0
+              ? +(((reviewedCount - stat.changed_count) / reviewedCount) * 100).toFixed(1)
+              : 0;
+          const changeRate =
+            reviewedCount > 0 ? +((stat.changed_count / reviewedCount) * 100).toFixed(1) : 0;
+          return {
+            ...stat,
+            exact_match_rate: exactMatchRate,
+            change_rate: changeRate
+          };
+        })
+        .sort((a, b) => b.change_rate - a.change_rate);
+
+      const sourceAccuracy = Object.values(bySource)
+        .map((row) => ({
+          ...row,
+          correction_rate:
+            row.comparable_count > 0 ? +((row.corrected_count / row.comparable_count) * 100).toFixed(1) : 0
+        }))
+        .sort((a, b) => b.reviewed_count - a.reviewed_count);
+
       return {
         agent1: { total_candidates: totalCandidates, by_source: candidates },
         agent2: { total_staged: totalStaged, by_source: staging },
         agent3: { scope_distribution: scopes },
         agent4: { total_duplicates: totalDups, duplicate_rate: totalStaged > 0 ? +(totalDups / totalStaged * 100).toFixed(1) : 0 },
         agent5: { total_approved: totalApproved, total_pending: totalPending, approval_rate: totalStaged > 0 ? +(totalApproved / totalStaged * 100).toFixed(1) : 0 },
+        accuracy: {
+          total_reviewed: reviewEvents.length,
+          comparable_reviewed: comparableReviewed,
+          baseline_coverage:
+            reviewEvents.length > 0 ? +((comparableReviewed / reviewEvents.length) * 100).toFixed(1) : 0,
+          reviewed_with_corrections: correctedEvents,
+          correction_rate:
+            comparableReviewed > 0 ? +((correctedEvents / comparableReviewed) * 100).toFixed(1) : 0,
+          exact_match_rate:
+            comparableReviewed > 0 ? +(((comparableReviewed - correctedEvents) / comparableReviewed) * 100).toFixed(1) : 0,
+          average_changed_fields:
+            comparableReviewed > 0 ? +(changedFieldTotal / comparableReviewed).toFixed(2) : 0,
+          duplicate_overrides: duplicateOverrides,
+          field_accuracy: fieldAccuracy,
+          by_source: sourceAccuracy,
+          recent_reviews: recentReviews
+        },
         recent_runs: recentRuns
       };
     },
@@ -863,12 +1225,7 @@ export function createRepository(config) {
     },
 
     updateStagingReviewStatus(id, status) {
-      statements.patchStagingReviewStatus.run({
-        id,
-        review_status: status,
-        updated_at: nowIso()
-      });
-      return this.getStagingById(id);
+      return this.reviewStagingEvent(id, { review_status: status });
     },
 
     getKnownFingerprints(sourceId) {
@@ -877,24 +1234,7 @@ export function createRepository(config) {
     },
 
     patchStagingFields(id, fields) {
-      const current = this.getStagingById(id);
-      if (!current) return null;
-      statements.patchStagingFields.run({
-        id,
-        title: fields.title ?? current.title,
-        organizational_sponsor: fields.organizational_sponsor ?? current.organizational_sponsor,
-        start_datetime: fields.start_datetime ?? current.start_datetime,
-        end_datetime: fields.end_datetime ?? current.end_datetime,
-        location_type: fields.location_type ?? current.location_type,
-        location_or_address: fields.location_or_address ?? current.location_or_address,
-        room_number: fields.room_number ?? current.room_number,
-        event_link: fields.event_link ?? current.event_link,
-        short_description: fields.short_description ?? current.short_description,
-        extended_description: fields.extended_description ?? current.extended_description,
-        artwork_url: fields.artwork_url ?? current.artwork_url,
-        updated_at: nowIso()
-      });
-      return this.getStagingById(id);
+      return this.reviewStagingEvent(id, fields);
     },
 
     getSummaryCounts() {
