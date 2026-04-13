@@ -1271,11 +1271,16 @@ function buildBody(ev, p, isDup) {
 function f(label, value, fullWidth = false) {
   const empty = !value;
   const v = empty ? "—" : String(value);
+  const trimmed = String(v || "").trim();
+  const isUrl = /^https?:\/\//i.test(trimmed);
+  const renderedValue = !empty && isUrl
+    ? `<a href="${esc(trimmed)}" target="_blank" rel="noopener noreferrer">${esc(trimmed)}</a>`
+    : esc(v);
   return `
     <div class="fitem${fullWidth ? " fcol2" : ""}">
       <span class="flabel">${label}</span>
       <div class="fvalue-wrap">
-        <div class="fvalue${empty ? " empty" : ""}">${esc(v)}</div>
+        <div class="fvalue${empty ? " empty" : ""}">${renderedValue}</div>
         ${!empty ? `<button class="copy-btn" onclick="cp(${JSON.stringify(v)})" title="Copy">Copy</button>` : ""}
       </div>
     </div>`;
