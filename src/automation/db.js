@@ -184,6 +184,69 @@ function reviewRowToObject(row) {
   };
 }
 
+function classifySourceHealth(source, latestRun, envState) {
+  if (!source.is_active) {
+    return {
+      status: "inactive",
+      reason_code: "inactive",
+      reason: "Source is disabled and excluded from scheduled runs."
+    };
+  }
+
+  if (source.adapter_key === "openai_listing_v1" && !envState.openai_api_key) {
+    return {
+      status: "error",
+      reason_code: "env_missing_openai",
+      reason: "OPENAI_API_KEY missing for AI extraction."
+    };
+  }
+
+  if (source.adapter_key === "openai_listing_v1" && !envState.mcp_browser_url) {
+    return {
+      status: "error",
+      reason_code: "env_missing_mcp",
+      reason: "MCP_BROWSER_URL missing for browser automation."
+    };
+  }
+
+  if (!source.last_polled_at) {
+    return {
+      status: "warning",
+      reason_code: "not_run_yet",
+      reason: "Source has not run yet."
+    };
+  }
+
+  if (source.last_run_status === "failed") {
+    const errorMessage = source.last_run_error || latestRun?.error_message || "Unknown error";
+    if (String(errorMessage).toLowerCase().includes("timed out")) {
+      return {
+        status: "error",
+        reason_code: "timeout",
+        reason: `Last run timed out: ${errorMessage}`
+      };
+    }
+    if (String(errorMessage).toLowerCase().includes("invalid json")) {
+      return {
+        status: "error",
+        reason_code: "parse_failed",
+        reason: `Model output parsing failed: ${errorMessage}`
+      };
+    }
+    return {
+      status: "error",
+      reason_code: "run_failed",
+      reason: `Last run failed: ${errorMessage}`
+    };
+  }
+
+  return {
+    status: "healthy",
+    reason_code: "ok",
+    reason: "Source is active and last run succeeded."
+  };
+}
+
 export function createRepository(config) {
   fs.mkdirSync(config.dataDir, { recursive: true });
   const db = new Database(config.dbPath);
@@ -1102,6 +1165,7 @@ export function createRepository(config) {
       const totalPending    = db.prepare(`SELECT COUNT(*) as n FROM events_staging WHERE review_status='pending' AND (is_duplicate IS NULL OR is_duplicate=0)`).get().n;
       const recentRuns      = db.prepare(`SELECT source_id, status, new_candidates, upserted_events, started_at, finished_at FROM source_runs ORDER BY started_at DESC LIMIT 50`).all();
       const reviewedRows    = db.prepare(`SELECT * FROM events_staging WHERE reviewed_at IS NOT NULL ORDER BY reviewed_at DESC`).all();
+      const sourceRows = statements.listSources.all().map(sourceRowToObject);
       const reviewEvents = reviewedRows.map(stagingRowToObject);
       const recentReviews = statements.listRecentReviews.all(12).map(reviewRowToObject);
       const fieldStats = Object.fromEntries(
@@ -1192,6 +1256,35 @@ export function createRepository(config) {
         }))
         .sort((a, b) => b.reviewed_count - a.reviewed_count);
 
+      const envState = {
+        openai_api_key: Boolean(process.env.OPENAI_API_KEY?.trim()),
+        mcp_browser_url: Boolean(
+          (process.env.MCP_BROWSER_URL || process.env.PLAYWRIGHT_MCP_URL || "").trim()
+        )
+      };
+      const latestRunsBySource = Object.fromEntries(
+        recentRuns.map((run) => [run.source_id, run])
+      );
+      const sourceHealth = sourceRows
+        .map((source) => ({
+          source_id: source.id,
+          source_name: source.source_name,
+          ...classifySourceHealth(source, latestRunsBySource[source.id], envState),
+          last_polled_at: source.last_polled_at || null,
+          last_run_status: source.last_run_status || null
+        }))
+        .sort((a, b) => a.source_name.localeCompare(b.source_name));
+      const sourceHealthCounts = sourceHealth.reduce(
+        (acc, row) => {
+          if (row.status === "healthy") acc.healthy += 1;
+          else if (row.status === "warning") acc.warning += 1;
+          else if (row.status === "error") acc.error += 1;
+          else acc.inactive += 1;
+          return acc;
+        },
+        { healthy: 0, warning: 0, error: 0, inactive: 0 }
+      );
+
       return {
         agent1: { total_candidates: totalCandidates, by_source: candidates },
         agent2: { total_staged: totalStaged, by_source: staging },
@@ -1214,6 +1307,11 @@ export function createRepository(config) {
           field_accuracy: fieldAccuracy,
           by_source: sourceAccuracy,
           recent_reviews: recentReviews
+        },
+        source_health: {
+          env: envState,
+          counts: sourceHealthCounts,
+          by_source: sourceHealth
         },
         recent_runs: recentRuns
       };

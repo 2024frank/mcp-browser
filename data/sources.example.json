@@ -72,12 +72,10 @@
     "poll_interval_minutes": 720,
     "is_active": true,
     "attribution_label": "Allen Memorial Art Museum",
-    "notes": "Oberlin College art museum — openings, gallery talks, tours. May also appear on calendar.oberlin.edu.",
+    "notes": "Oberlin College art museum — openings, gallery talks, tours. Uses single_page_extraction because many event links resolve to generic listing views.",
     "adapter_config": {
-      "max_links": 20,
-      "max_detail_extractions": 10,
-      "extract_event_details": true,
-      "allowed_hosts": ["amam.oberlin.edu"]
+      "single_page_extraction": true,
+      "max_events_from_listing": 20
     }
   },
   {
@@ -128,14 +126,12 @@
     "ics_url": null,
     "adapter_key": "openai_listing_v1",
     "poll_interval_minutes": 720,
-    "is_active": false,
+    "is_active": true,
     "attribution_label": "Apollo Theatre",
-    "notes": "Historic community theatre — screenings, live performances, and events. is_active=false: site is on clevelandcinemas.com, verify scrapeability before enabling.",
+    "notes": "Historic community theatre — screenings and special events. Uses single_page_extraction because the location page is JS-heavy and does not expose stable event detail URLs.",
     "adapter_config": {
-      "max_links": 20,
-      "max_detail_extractions": 10,
-      "extract_event_details": true,
-      "allowed_hosts": ["clevelandcinemas.com", "www.clevelandcinemas.com"]
+      "single_page_extraction": true,
+      "max_events_from_listing": 20
     }
   },
   {

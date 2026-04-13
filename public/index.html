@@ -131,11 +131,23 @@
     .source-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .dot-ok   { background: #4ade80; }
     .dot-err  { background: #f87171; }
+    .dot-warn { background: #fbbf24; }
     .dot-idle { background: #94a3b8; }
     .source-info { flex: 1; min-width: 0; }
     .source-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .source-sub  { font-size: 11px; color: var(--muted); margin-top: 1px; }
     .source-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .source-filters { display: flex; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--border); background: #fcfcfd; }
+    .sfilter {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--muted);
+      border-radius: 100px;
+      padding: 2px 8px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .sfilter.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
     /* ── Runs log ─────────────────────────────────────────── */
     .run-row { padding: 7px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
@@ -372,17 +384,17 @@
 <!-- ═══ TOPBAR ═══════════════════════════════════════════════════════════════ -->
 <header class="topbar">
   <div class="topbar-left">
-    <span style="font-size:18px">📅</span>
+    <span style="font-size:18px">CAL</span>
     <span class="brand">Oberlin Calendar Automation</span>
     <span class="status-pill status-offline" id="statusPill">Connecting…</span>
   </div>
   <div class="topbar-right">
     <span class="ts" id="tsLabel"></span>
-    <button class="btn btn-ghost btn-sm" onclick="exportCsv()">⬇ Export CSV</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportCsv()">Export CSV</button>
     <button class="btn btn-ghost btn-sm" onclick="doRefresh()">Refresh</button>
     <button class="btn btn-ghost btn-sm" onclick="syncHub()" id="syncBtn">Sync Hub</button>
-    <button class="btn btn-ghost btn-sm" onclick="watchAll()" id="watchBtn">👁 Watch</button>
-    <button class="btn btn-primary btn-sm" onclick="runAll()" id="runBtn">▶ Run Now</button>
+    <button class="btn btn-ghost btn-sm" onclick="watchAll()" id="watchBtn">Watch</button>
+    <button class="btn btn-primary btn-sm" onclick="runAll()" id="runBtn">Run Now</button>
   </div>
 </header>
 
@@ -398,35 +410,35 @@
 <div class="pipeline-section">
   <div class="pipeline-banner" id="pipelineBanner">
     <div class="pipe-step">
-      <div class="pipe-icon pipe-icon-1" id="pipeStep1">🌐</div>
+      <div class="pipe-icon pipe-icon-1" id="pipeStep1">L1</div>
       <div class="pipe-label">Listing Collector</div>
       <div class="pipe-sub">Browser + MCP</div>
       <div class="pipe-stat" id="pipeStat1">—</div>
     </div>
-    <div class="pipe-arrow">▶</div>
+    <div class="pipe-arrow">&gt;</div>
     <div class="pipe-step">
-      <div class="pipe-icon pipe-icon-2" id="pipeStep2">🔍</div>
+      <div class="pipe-icon pipe-icon-2" id="pipeStep2">L2</div>
       <div class="pipe-label">Detail Extractor</div>
       <div class="pipe-sub">GPT-4.1</div>
       <div class="pipe-stat" id="pipeStat2">—</div>
     </div>
-    <div class="pipe-arrow">▶</div>
+    <div class="pipe-arrow">&gt;</div>
     <div class="pipe-step">
-      <div class="pipe-icon pipe-icon-3" id="pipeStep3">📍</div>
+      <div class="pipe-icon pipe-icon-3" id="pipeStep3">L3</div>
       <div class="pipe-label">Hyperlocal Tagger</div>
       <div class="pipe-sub">GPT-4.1-mini</div>
       <div class="pipe-stat" id="pipeStat3">—</div>
     </div>
-    <div class="pipe-arrow">▶</div>
+    <div class="pipe-arrow">&gt;</div>
     <div class="pipe-step">
-      <div class="pipe-icon pipe-icon-4" id="pipeStep4">🔄</div>
+      <div class="pipe-icon pipe-icon-4" id="pipeStep4">L4</div>
       <div class="pipe-label">Dedup Agent</div>
       <div class="pipe-sub">GPT-4.1-mini</div>
       <div class="pipe-stat" id="pipeStat4">—</div>
     </div>
-    <div class="pipe-arrow">▶</div>
+    <div class="pipe-arrow">&gt;</div>
     <div class="pipe-step">
-      <div class="pipe-icon pipe-icon-5" id="pipeStep5">✅</div>
+      <div class="pipe-icon pipe-icon-5" id="pipeStep5">L5</div>
       <div class="pipe-label">Human Review</div>
       <div class="pipe-sub">Community Hub</div>
       <div class="pipe-stat" id="pipeStat5">—</div>
@@ -443,7 +455,13 @@
     <div class="panel">
       <div class="panel-head">
         <h3>Sources</h3>
-        <button class="btn btn-outline btn-xs" onclick="runAll()">▶ Run All</button>
+        <button class="btn btn-outline btn-xs" onclick="runAll()">Run All</button>
+      </div>
+      <div class="source-filters">
+        <button class="sfilter active" data-sf="all" onclick="setSourceFilter('all')">All</button>
+        <button class="sfilter" data-sf="error" onclick="setSourceFilter('error')">Errors</button>
+        <button class="sfilter" data-sf="warning" onclick="setSourceFilter('warning')">Warnings</button>
+        <button class="sfilter" data-sf="inactive" onclick="setSourceFilter('inactive')">Inactive</button>
       </div>
       <div id="sourcesList"><div style="padding:18px;color:var(--muted)"><div class="spin"></div></div></div>
     </div>
@@ -476,7 +494,7 @@
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <button class="btn btn-outline btn-sm" onclick="openPosterModal()" title="Extract event info from a poster photo">
-            📸 Extract from Poster
+            Extract from Poster
           </button>
           <div class="tabs">
             <button class="tab active" data-f="pending"   onclick="setFilter('pending')">Pending</button>
@@ -485,6 +503,12 @@
             <button class="tab"        data-f="rejected"  onclick="setFilter('rejected')">Rejected</button>
             <button class="tab"        data-f="all"       onclick="setFilter('all')">All</button>
           </div>
+          <select id="queueSort" class="tab" style="border-radius:6px" onchange="setQueueSort(this.value)">
+            <option value="updated_desc">Newest</option>
+            <option value="updated_asc">Oldest</option>
+            <option value="source_asc">Source A-Z</option>
+            <option value="start_asc">Start Time</option>
+          </select>
         </div>
       </div>
       <div id="reviewQueue">
@@ -502,7 +526,7 @@
       <h3>Pipeline Health — Throughput &amp; Coverage</h3>
       <div style="display:flex;gap:8px;align-items:center">
         <span class="ts" id="gradesUpdated"></span>
-        <button class="btn btn-outline btn-xs" onclick="applySeed()" id="applySeedBtn" title="Push sources.example.json config updates into the live DB">⟳ Apply Source Config</button>
+        <button class="btn btn-outline btn-xs" onclick="applySeed()" id="applySeedBtn" title="Push sources.example.json config updates into the live DB">Apply Source Config</button>
       </div>
     </div>
     <div style="padding:18px" id="agentGradesBody">
@@ -532,10 +556,10 @@
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-head">
       <div>
-        <div class="modal-title">📸 Extract Event from Poster</div>
-        <div class="modal-subtitle">Research feature — AI Micro Grant · GPT-4o Vision</div>
+        <div class="modal-title">Extract Event from Poster</div>
+        <div class="modal-subtitle">Research feature — AI draft extraction; review before publish</div>
       </div>
-      <button class="modal-close" onclick="closePosterModal()">×</button>
+      <button class="modal-close" onclick="closePosterModal()">x</button>
     </div>
     <div class="input-group">
       <label>Paste a public image URL</label>
@@ -562,7 +586,7 @@
       <div class="extract-result-meta" id="extractMeta"></div>
       <div id="extractFields"></div>
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-        <a class="btn btn-hub" href="https://environmentaldashboard.org/calendar/post/new?show-menu-bar=1" target="_blank" rel="noopener">Open Community Hub Form ↗</a>
+        <a class="btn btn-hub" href="https://environmentaldashboard.org/calendar/post/new?show-menu-bar=1" target="_blank" rel="noopener">Open Community Hub Form</a>
         <button class="btn btn-success btn-sm" id="saveToQueueBtn" onclick="savePosterToQueue()">+ Save to Review Queue</button>
       </div>
     </div>
@@ -577,7 +601,7 @@
         <div class="modal-title">Edit Source</div>
         <div class="modal-subtitle" id="editSourceSubtitle"></div>
       </div>
-      <button class="modal-close" onclick="closeEditSource()">×</button>
+      <button class="modal-close" onclick="closeEditSource()">x</button>
     </div>
     <div class="input-group">
       <label>Source Name</label>
@@ -641,7 +665,7 @@
         <div class="modal-title">Edit Event</div>
         <div class="modal-subtitle" id="editEventSubtitle"></div>
       </div>
-      <button class="modal-close" onclick="closeEditEvent()">×</button>
+      <button class="modal-close" onclick="closeEditEvent()">x</button>
     </div>
     <div class="input-group">
       <label>Title</label>
@@ -726,6 +750,9 @@ let filter    = "pending";
 let allEvents = [];
 let allSources = [];
 let openCards = new Set();
+let sourceHealthMap = {};
+let sourceFilter = "all";
+let queueSort = "updated_desc";
 
 let editingSourceId = null;
 let editingEventId  = null;
@@ -778,41 +805,68 @@ function renderStats(health, metrics) {
 
 /* ── Sources list ────────────────────────────────────────────────────────── */
 function renderSources(sources) {
-  if (!sources.length) {
+  const filtered = sources.filter((s) => {
+    const health = sourceHealthMap[s.id];
+    if (sourceFilter === "all") return true;
+    if (sourceFilter === "inactive") return health?.status === "inactive" || !s.is_active;
+    if (sourceFilter === "error") return health?.status === "error";
+    if (sourceFilter === "warning") return health?.status === "warning";
+    return true;
+  });
+
+  if (!filtered.length) {
     document.getElementById("sourcesList").innerHTML =
-      '<div style="padding:16px;font-size:12px;color:var(--muted)">No sources configured.</div>';
+      '<div style="padding:16px;font-size:12px;color:var(--muted)">No sources match this filter.</div>';
     return;
   }
-  document.getElementById("sourcesList").innerHTML = sources.map(s => {
-    const dotCls = s.last_run_status === "success" ? "dot-ok"
-                 : s.last_run_status === "failed"  ? "dot-err"
-                 : "dot-idle";
+  document.getElementById("sourcesList").innerHTML = filtered.map(s => {
+    const health = sourceHealthMap[s.id] || null;
+    const dotCls =
+      health?.status === "healthy" ? "dot-ok"
+      : health?.status === "error" ? "dot-err"
+      : health?.status === "warning" ? "dot-warn"
+      : "dot-idle";
+    const statusText = health?.reason_code || (!s.is_active ? "inactive" : "status_unknown");
+    const statusReason = health?.reason || (!s.is_active
+      ? "Source is disabled and excluded from scheduled runs."
+      : "Health reason not available yet.");
+    const statusDetail = s.last_polled_at
+      ? `${ago(s.last_polled_at)} · ${statusText}`
+      : statusText;
     const inactive = !s.is_active ? ' <span style="font-size:10px;color:var(--muted)">(off)</span>' : "";
     return `
       <div class="source-row">
-        <div class="source-dot ${dotCls}"></div>
+        <div class="source-dot ${dotCls}" title="${esc(statusReason)}"></div>
         <div class="source-info">
           <div class="source-name" title="${esc(s.source_name)}">${esc(s.source_name)}${inactive}</div>
-          <div class="source-sub">${s.last_polled_at ? ago(s.last_polled_at) : "never run"}${s.adapter_key ? " · " + s.adapter_key.replace(/_v\d$/, "") : ""}</div>
+          <div class="source-sub" title="${esc(statusReason)}">${esc(statusDetail)}${s.adapter_key ? " · " + s.adapter_key.replace(/_v\d$/, "") : ""}</div>
         </div>
         <div class="source-actions">
-          <button class="btn btn-outline btn-xs" onclick="openEditSource('${s.id}')" title="Edit source">✎</button>
-          <button class="btn btn-outline btn-xs" onclick="watchSource('${s.id}')" title="Watch for new events" ${!s.is_active ? "disabled" : ""}>👁</button>
-          <button class="btn btn-outline btn-xs" onclick="runSource('${s.id}')" title="Full run" ${!s.is_active ? "disabled" : ""}>▶</button>
+          <button class="btn btn-outline btn-xs" onclick="openEditSource('${s.id}')" title="Edit source">Edit</button>
+          <button class="btn btn-outline btn-xs" onclick="watchSource('${s.id}')" title="Watch for new events" ${!s.is_active ? "disabled" : ""}>Watch</button>
+          <button class="btn btn-outline btn-xs" onclick="runSource('${s.id}')" title="Full run" ${!s.is_active ? "disabled" : ""}>Run</button>
         </div>
       </div>`;
   }).join("");
 }
 
+function setSourceFilter(next) {
+  sourceFilter = next;
+  document.querySelectorAll(".sfilter").forEach((el) => {
+    el.classList.toggle("active", el.dataset.sf === next);
+  });
+  renderSources(allSources);
+}
+
 /* ── Agent Activity log ──────────────────────────────────────────────────── */
 const ACT_ICONS = {
-  source_start:    "🚀", listing_done:   "🔍",
-  detail_start:    "⏳", detail_done:    "✅", detail_error:     "❌",
-  hyperlocal_start:"📍", hyperlocal_done:"✅", hyperlocal_error:"❌",
-  dedupe_start:    "🔄", dedupe_done:    "✅", dedupe_error:     "❌",
-  source_done:     "🏁", source_error:   "💥",
-  watch_start:     "👁",  watch_none:     "✓",
-  watch_new_found: "🆕",  watch_done:     "🏁", watch_error: "⚠️"
+  source_start:    "RUN", listing_done:   "LST",
+  detail_start:    "DET", detail_done:    "OK", detail_error:     "ERR",
+  hyperlocal_start:"TAG", hyperlocal_done:"OK", hyperlocal_error:"ERR",
+  dedupe_start:    "DED", dedupe_done:    "OK", dedupe_error:     "ERR",
+  source_done:     "DONE", source_error:   "FAIL",
+  watch_start:     "CHK",  watch_none:     "IDLE",
+  watch_new_found: "NEW",  watch_done:     "DONE", watch_error: "ERR"
 };
 
 function renderActivity(entries) {
@@ -820,7 +874,7 @@ function renderActivity(entries) {
   const log  = document.getElementById("activityLog");
   if (!entries.length) {
     dot.style.display = "none";
-    log.innerHTML = '<div style="padding:14px 16px;font-size:12px;color:var(--muted)">No activity yet. Click ▶ Run Now to start.</div>';
+    log.innerHTML = '<div style="padding:14px 16px;font-size:12px;color:var(--muted)">No activity yet. Click Run Now to start.</div>';
     return;
   }
   // Show the blinking dot if something ran in the last 5 minutes
@@ -872,7 +926,7 @@ function renderRuns(runs) {
       : null;
     const durationLabel = durationMs === null ? "running" : Math.round(durationMs / 1000) + "s";
     return `<div class="run-row">
-      <span class="${ok ? "run-ok" : "run-err"}">${ok ? "✓" : "✗"}</span>
+      <span class="${ok ? "run-ok" : "run-err"}">${ok ? "OK" : "ERR"}</span>
       <span style="flex:1" title="${esc(r.error_message || "")}">${ago(r.started_at)} · ${durationLabel}</span>
       <span>${r.new_candidates ?? 0} new · ${r.upserted_events ?? 0} evt</span>
     </div>`;
@@ -886,14 +940,32 @@ function setFilter(f) {
   renderQueue();
 }
 
+function setQueueSort(value) {
+  queueSort = value || "updated_desc";
+  renderQueue();
+}
+
 function filteredEvents() {
+  let items;
   switch (filter) {
-    case "pending":   return allEvents.filter(e => e.review_status === "pending" && !e.is_duplicate);
-    case "duplicate": return allEvents.filter(e => e.is_duplicate);
-    case "approved":  return allEvents.filter(e => e.review_status === "approved");
-    case "rejected":  return allEvents.filter(e => e.review_status === "rejected");
-    default:          return allEvents;
+    case "pending":   items = allEvents.filter(e => e.review_status === "pending" && !e.is_duplicate); break;
+    case "duplicate": items = allEvents.filter(e => e.is_duplicate); break;
+    case "approved":  items = allEvents.filter(e => e.review_status === "approved"); break;
+    case "rejected":  items = allEvents.filter(e => e.review_status === "rejected"); break;
+    default:          items = [...allEvents];
   }
+  if (!items) items = [...allEvents];
+
+  const cmpDate = (a, b, field, asc = false) => {
+    const left = a[field] ? new Date(a[field]).getTime() : 0;
+    const right = b[field] ? new Date(b[field]).getTime() : 0;
+    return asc ? left - right : right - left;
+  };
+  if (queueSort === "updated_asc") items.sort((a, b) => cmpDate(a, b, "updated_at", true));
+  else if (queueSort === "source_asc") items.sort((a, b) => String(a.source_name || "").localeCompare(String(b.source_name || "")));
+  else if (queueSort === "start_asc") items.sort((a, b) => cmpDate(a, b, "start_datetime", true));
+  else items.sort((a, b) => cmpDate(a, b, "updated_at", false));
+  return items;
 }
 
 function renderQueue() {
@@ -902,19 +974,36 @@ function renderQueue() {
   if (!evts.length) {
     document.getElementById("reviewQueue").innerHTML = `
       <div class="empty">
-        <div class="empty-icon">${filter === "pending" ? "✅" : "📭"}</div>
+        <div class="empty-icon">${filter === "pending" ? "Clear" : "Empty"}</div>
         <div class="empty-title">${filter === "pending" ? "Queue is clear!" : "Nothing here"}</div>
         <div class="empty-desc">${filter === "pending"
-          ? "No events pending review. Click <strong>▶ Run Now</strong> to discover new events."
+          ? "No events pending review. Click <strong>Run Now</strong> to discover new events."
           : "No events match this filter."}</div>
       </div>`;
     return;
   }
-  document.getElementById("reviewQueue").innerHTML = evts.map(ev => buildCard(ev)).join("");
+  const truncation = allEvents.length >= 200
+    ? `<div style="padding:10px 16px;font-size:12px;color:var(--warning);background:var(--warning-bg);border-bottom:1px solid var(--warning-border)">Displaying first 200 events. Refine filters or add pagination for full backlog.</div>`
+    : "";
+  document.getElementById("reviewQueue").innerHTML = truncation + evts.map(ev => buildCard(ev)).join("");
   openCards.forEach(id => {
     const el = document.getElementById("c-" + id);
     if (el) el.classList.add("open");
   });
+}
+
+function getVisibleIds() {
+  return filteredEvents().map((e) => e.id);
+}
+
+function focusEventByOffset(direction) {
+  const ids = getVisibleIds();
+  if (!ids.length) return;
+  const current = ids.findIndex((id) => openCards.has(id));
+  const nextIndex = current === -1 ? 0 : Math.max(0, Math.min(ids.length - 1, current + direction));
+  const id = ids[nextIndex];
+  openCards = new Set([id]);
+  renderQueue();
 }
 
 function toggleCard(id) {
@@ -980,7 +1069,7 @@ function buildBody(ev, p, isDup) {
   const cats = p.event_type_categories || ev.event_type_categories || [];
 
   return `
-    ${isDup ? `<div class="dup-notice">⚠️
+    ${isDup ? `<div class="dup-notice">
       <div><strong>Duplicate detected</strong> — this event already exists in the Community Hub or staging queue.<br>
       <small>${esc(ev.duplicate_reason || "")}${ev.duplicate_match_url
         ? ` — <a href="${esc(ev.duplicate_match_url)}" target="_blank">${esc(ev.duplicate_match_url)}</a>` : ""}</small>
@@ -1064,11 +1153,9 @@ function buildBody(ev, p, isDup) {
 
     <!-- Action bar -->
     <div class="action-bar">
-      <a class="btn btn-hub" href="${HUB_FORM}" target="_blank" rel="noopener noreferrer">
-        Open Community Hub Form ↗
-      </a>
+      <a class="btn btn-hub" href="${HUB_FORM}" target="_blank" rel="noopener noreferrer">Open Community Hub Form</a>
       <button class="btn btn-outline btn-sm" onclick="openEditEvent('${ev.id}');event.stopPropagation()">
-        ✎ Edit Fields
+        Edit Fields
       </button>
       ${isDup ? `
         <button class="btn btn-outline btn-sm" onclick="markUnique('${ev.id}');event.stopPropagation()">
@@ -1076,10 +1163,10 @@ function buildBody(ev, p, isDup) {
         </button>` : ""}
       <div class="action-bar-space"></div>
       ${!isDup && ev.review_status !== "approved" ? `
-        <button class="btn btn-success btn-sm" onclick="setStatus('${ev.id}','approved');event.stopPropagation()">✓ Mark Approved</button>` : ""}
+        <button class="btn btn-success btn-sm" onclick="setStatus('${ev.id}','approved');event.stopPropagation()">Mark Approved</button>` : ""}
       ${ev.review_status !== "rejected" ? `
-        <button class="btn btn-danger btn-sm" onclick="setStatus('${ev.id}','rejected');event.stopPropagation()">✕ Reject</button>` : `
-        <button class="btn btn-muted btn-sm" onclick="setStatus('${ev.id}','pending');event.stopPropagation()">↩ Restore</button>`}
+        <button class="btn btn-danger btn-sm" onclick="setStatus('${ev.id}','rejected');event.stopPropagation()">Reject</button>` : `
+        <button class="btn btn-muted btn-sm" onclick="setStatus('${ev.id}','pending');event.stopPropagation()">Restore</button>`}
     </div>`;
 }
 
@@ -1092,7 +1179,7 @@ function f(label, value, fullWidth = false) {
       <span class="flabel">${label}</span>
       <div class="fvalue-wrap">
         <div class="fvalue${empty ? " empty" : ""}">${esc(v)}</div>
-        ${!empty ? `<button class="copy-btn" onclick="cp(${JSON.stringify(v)})" title="Copy">⎘</button>` : ""}
+        ${!empty ? `<button class="copy-btn" onclick="cp(${JSON.stringify(v)})" title="Copy">Copy</button>` : ""}
       </div>
     </div>`;
 }
@@ -1105,7 +1192,7 @@ function ftall(label, value) {
       <span class="flabel">${label}</span>
       <div class="fvalue-wrap">
         <div class="fvalue tall${empty ? " empty" : ""}">${esc(v)}</div>
-        ${!empty ? `<button class="copy-btn" onclick="cp(${JSON.stringify(v)})" title="Copy">⎘</button>` : ""}
+        ${!empty ? `<button class="copy-btn" onclick="cp(${JSON.stringify(v)})" title="Copy">Copy</button>` : ""}
       </div>
     </div>`;
 }
@@ -1116,8 +1203,18 @@ async function setStatus(id, status) {
     const res = await apiFetch("/api/events-staging/" + id, { method: "PATCH", body: { review_status: status } });
     const idx = allEvents.findIndex(e => e.id === id);
     if (idx !== -1 && res.event) allEvents[idx] = { ...allEvents[idx], ...res.event };
+    const idsBefore = getVisibleIds();
+    const currentIndex = Math.max(0, idsBefore.indexOf(id));
     renderQueue();
-    toast(status === "approved" ? "Marked as approved ✓"
+    const idsAfter = getVisibleIds();
+    if (idsAfter.length && (status === "approved" || status === "rejected")) {
+      const next = idsAfter[Math.min(currentIndex, idsAfter.length - 1)];
+      if (next) {
+        openCards = new Set([next]);
+        renderQueue();
+      }
+    }
+    toast(status === "approved" ? "Marked as approved"
         : status === "rejected" ? "Event rejected"
         : "Restored to pending", status === "approved" ? "ok" : status === "rejected" ? "err" : "inf");
   } catch (e) { toast("Error: " + e.message, "err"); }
@@ -1142,26 +1239,64 @@ async function markUnique(id) {
   }
 }
 
+function activeOpenId() {
+  const first = [...openCards][0];
+  return first || null;
+}
+
+document.addEventListener("keydown", (event) => {
+  const target = event.target;
+  const isTyping = target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+  if (isTyping) return;
+
+  const key = event.key.toLowerCase();
+  if (key === "j") {
+    event.preventDefault();
+    focusEventByOffset(1);
+  } else if (key === "k") {
+    event.preventDefault();
+    focusEventByOffset(-1);
+  } else if (key === "a") {
+    const id = activeOpenId();
+    if (id) {
+      event.preventDefault();
+      setStatus(id, "approved");
+    }
+  } else if (key === "r") {
+    const id = activeOpenId();
+    if (id) {
+      event.preventDefault();
+      setStatus(id, "rejected");
+    }
+  } else if (key === "e") {
+    const id = activeOpenId();
+    if (id) {
+      event.preventDefault();
+      openEditEvent(id);
+    }
+  }
+});
+
 async function runSource(id) {
-  toast("Running source…", "inf");
+  toast("Running source...", "inf");
   setBusy(true);
   try {
     const r = await apiFetch("/api/sources/" + id + "/run", { method: "POST" });
-      toast("Done — " + (r.upserted_events || 0) + " events staged", "ok");
+      toast("Done - " + (r.upserted_events || 0) + " events staged", "ok");
     await loadAll();
   } catch (e) { toast("Failed: " + e.message, "err"); }
   finally { setBusy(false); }
 }
 
 async function watchSource(id) {
-  toast("Checking source for new events…", "inf");
+  toast("Checking source for new events...", "inf");
   setBusy(true);
   try {
     const r = await apiFetch("/api/sources/" + id + "/watch", { method: "POST" });
     if (r.status === "no_new_events") {
       toast("No new events found (" + (r.checked || 0) + " checked)", "inf");
     } else if (r.status === "new_events_extracted") {
-      toast("Found " + r.new_count + " new — " + r.extracted + " extracted", "ok");
+      toast("Found " + r.new_count + " new - " + r.extracted + " extracted", "ok");
       await loadAll();
     } else {
       toast("Watch: " + (r.reason || r.status), "inf");
@@ -1171,7 +1306,7 @@ async function watchSource(id) {
 }
 
 async function watchAll() {
-  toast("Watching all sources for new events…", "inf");
+  toast("Watching all sources for new events...", "inf");
   setBusy(true);
   try {
     const r = await apiFetch("/api/watch", { method: "POST" });
@@ -1179,29 +1314,29 @@ async function watchAll() {
     const newFound = results.reduce((s, x) => s + (x.new_count || 0), 0);
     const extracted = results.reduce((s, x) => s + (x.extracted || 0), 0);
     if (newFound > 0) {
-      toast("Watch done — " + newFound + " new URLs, " + extracted + " extracted", "ok");
+      toast("Watch done - " + newFound + " new URLs, " + extracted + " extracted", "ok");
       await loadAll();
     } else {
-      toast("Watch done — no new events across " + results.length + " sources", "inf");
+      toast("Watch done - no new events across " + results.length + " sources", "inf");
     }
   } catch (e) { toast("Watch failed: " + e.message, "err"); }
   finally { setBusy(false); }
 }
 
 async function runAll() {
-  toast("Running all due sources…", "inf");
+  toast("Running all due sources...", "inf");
   setBusy(true);
   try {
     const r = await apiFetch("/api/runs/discover-due-sources", { method: "POST" });
     const total = (r.results || []).reduce((s, x) => s + (x.upserted_events || 0), 0);
-    toast("Run complete — " + total + " events staged", "ok");
+    toast("Run complete - " + total + " events staged", "ok");
     await loadAll();
   } catch (e) { toast("Run failed: " + e.message, "err"); }
   finally { setBusy(false); }
 }
 
 async function syncHub() {
-  toast("Syncing hub memory…", "inf");
+  toast("Syncing hub memory...", "inf");
   setBusy(true);
   try {
     const r = await apiFetch("/api/community-hub-events/sync-browser", { method: "POST" });
@@ -1253,7 +1388,7 @@ async function saveEditSource() {
   if (!body.source_name) { toast("Source name is required", "err"); return; }
   try {
     await apiFetch("/api/sources/" + editingSourceId, { method: "PATCH", body });
-    toast("Source saved ✓", "ok");
+    toast("Source saved", "ok");
     closeEditSource();
     await loadAll();
   } catch (e) { toast("Save failed: " + e.message, "err"); }
@@ -1320,7 +1455,7 @@ async function saveEditEvent() {
     // Update in-memory list
     const idx = allEvents.findIndex(e => e.id === editingEventId);
     if (idx !== -1 && res.event) allEvents[idx] = { ...allEvents[idx], ...res.event };
-    toast("Event saved ✓", "ok");
+    toast("Event saved", "ok");
     closeEditEvent();
     renderQueue();
   } catch (e) { toast("Save failed: " + e.message, "err"); }
@@ -1551,7 +1686,7 @@ async function runPosterExtract() {
 
   btn.disabled = true;
   spinner.style.display = "inline";
-  status.textContent = "Sending to GPT-4o…";
+    status.textContent = "Sending to GPT-4o...";
   document.getElementById("extractResult").className = "extract-result";
 
   try {
@@ -1605,7 +1740,7 @@ async function savePosterToQueue() {
     if (url) body.image_url = url;
     else     { body.image_base64 = posterBase64; body.media_type = posterMimeType; }
     await apiFetch("/api/poster-extract", { method: "POST", body });
-    toast("Saved to review queue ✓", "ok");
+    toast("Saved to review queue", "ok");
     closePosterModal();
     await loadAll();
   } catch (err) {
@@ -1668,7 +1803,7 @@ function exportCsv() {
   a.download = "oberlin-events-" + new Date().toISOString().slice(0,10) + ".csv";
   a.click();
   URL.revokeObjectURL(url);
-  toast("CSV downloaded ✓", "ok");
+  toast("CSV downloaded", "ok");
 }
 
 /* ── Boot ────────────────────────────────────────────────────────────────── */
@@ -1687,11 +1822,13 @@ function renderAgentGrades(m) {
   const a3 = m.agent3 || {};
   const a4 = m.agent4 || {};
   const a5 = m.agent5 || {};
+  const sh = m.source_health || {};
 
   const cands    = a1.total_candidates || 0;
   const staged   = a2.total_staged     || 0;
   const dupRate  = a4.duplicate_rate   || 0;
   const appRate  = a5.approval_rate    || 0;
+  const healthCounts = sh.counts || { healthy: 0, warning: 0, error: 0, inactive: 0 };
 
   // Agent 2 yield: how many staged events per candidate collected
   const a2Yield  = cands > 0 ? +(staged / cands * 100).toFixed(1) : 0;
@@ -1720,40 +1857,43 @@ function renderAgentGrades(m) {
   document.getElementById("agentGradesBody").innerHTML = `
     <div class="agent-grades">
       <div class="grade-card">
-        <div class="grade-label">🌐 Agent 1 — Listing</div>
+        <div class="grade-label">Agent 1 - Listing</div>
         <div class="grade-stat">${cands.toLocaleString()}</div>
         <div class="grade-sub">event URLs discovered</div>
         <div class="grade-bar-wrap"><div class="grade-bar bar-blue" style="width:${Math.min(cands/5,100)}%"></div></div>
         <span class="grade-badge grade-${cands>0?"A":"F"}">${cands>0?"A":"F"}</span>
       </div>
       <div class="grade-card">
-        <div class="grade-label">🔍 Agent 2 — Detail Extractor</div>
+        <div class="grade-label">Agent 2 - Detail Extractor</div>
         <div class="grade-stat">${staged.toLocaleString()}</div>
         <div class="grade-sub">${a2Yield}% yield from candidates</div>
         <div class="grade-bar-wrap"><div class="grade-bar bar-green" style="width:${a2Yield}%"></div></div>
         <span class="grade-badge grade-${letterGrade(a2Yield)}">${letterGrade(a2Yield)}</span>
       </div>
       <div class="grade-card">
-        <div class="grade-label">📍 Agent 3 — Hyperlocal Tagger</div>
+        <div class="grade-label">Agent 3 - Hyperlocal Tagger</div>
         <div class="grade-stat">${a3Cov}%</div>
         <div class="grade-sub">events tagged with scope</div>
         ${scopeRows ? `<div style="margin-top:8px">${scopeRows}</div>` : ""}
         <span class="grade-badge grade-${letterGrade(a3Cov)}">${letterGrade(a3Cov)}</span>
       </div>
       <div class="grade-card">
-        <div class="grade-label">🔄 Agent 4 — Dedup</div>
+        <div class="grade-label">Agent 4 - Dedup</div>
         <div class="grade-stat">${(a4.total_duplicates||0).toLocaleString()}</div>
         <div class="grade-sub">${dupRate}% duplicate rate</div>
         <div class="grade-bar-wrap"><div class="grade-bar bar-amber" style="width:${dupRate}%"></div></div>
         <span class="grade-badge grade-${dupRate<10?"A":dupRate<25?"B":dupRate<45?"C":"D"}">${dupRate<10?"A":dupRate<25?"B":dupRate<45?"C":"D"}</span>
       </div>
       <div class="grade-card">
-        <div class="grade-label">✅ Agent 5 — Review Queue</div>
+        <div class="grade-label">Agent 5 - Review Queue</div>
         <div class="grade-stat">${(a5.total_approved||0).toLocaleString()}</div>
         <div class="grade-sub">${appRate}% approved · ${(a5.total_pending||0)} pending</div>
         <div class="grade-bar-wrap"><div class="grade-bar bar-green" style="width:${appRate}%"></div></div>
         <span class="grade-badge grade-${a5Grade}">${a5Grade}</span>
       </div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">
+      Source health: ${healthCounts.healthy} healthy · ${healthCounts.warning} warning · ${healthCounts.error} error · ${healthCounts.inactive} inactive
     </div>
     <div style="font-size:11px;color:var(--muted)">
       Grade scale: <strong>A</strong> ≥90% · <strong>B</strong> ≥75% · <strong>C</strong> ≥55% · <strong>D</strong> ≥35% · <strong>F</strong> &lt;35%
@@ -1776,7 +1916,7 @@ async function applySeed() {
     toast("Apply seed failed: " + e.message, "err");
   } finally {
     btn.disabled = false;
-    btn.textContent = "⟳ Apply Source Config";
+    btn.textContent = "Apply Source Config";
   }
 }
 
@@ -1829,7 +1969,7 @@ function applyEnvWarnings(env) {
     const banner = document.createElement("div");
     banner.id = bannerId;
     banner.style.cssText = "background:#7c3aed;color:#fff;font-size:12px;font-weight:600;padding:8px 24px;display:flex;align-items:center;gap:10px;";
-    banner.innerHTML = `⚠️ Missing env vars on this service: <strong>${missing.join(", ")}</strong>
+    banner.innerHTML = `Warning: Missing env vars on this service: <strong>${missing.join(", ")}</strong>
       &nbsp;— add them in <strong>Render → Environment</strong> then redeploy.
       <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:1px solid rgba(255,255,255,.4);color:#fff;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:11px">Dismiss</button>`;
     document.body.insertBefore(banner, document.body.firstChild);
@@ -1850,6 +1990,9 @@ async function loadAll() {
     setOnline(true);
     renderStats(health, metricsRes);
     applyEnvWarnings(health.env || {});
+    sourceHealthMap = Object.fromEntries(
+      (metricsRes.source_health?.by_source || []).map((row) => [row.source_id, row])
+    );
     allSources = sourcesRes.sources || [];
     renderSources(allSources);
     renderRuns(runsRes.runs || []);

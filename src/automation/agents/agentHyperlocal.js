@@ -33,6 +33,94 @@ const VALID_GEOGRAPHIC_TAGS = new Set([
   "online"
 ]);
 
+function textHasAny(value, terms) {
+  const text = String(value || "").toLowerCase();
+  return terms.some((term) => text.includes(term));
+}
+
+function deriveHeuristicScope(event) {
+  const merged = [
+    event.title,
+    event.organizational_sponsor,
+    event.location_or_address,
+    event.source_name,
+    event.source_domain,
+    event.source_event_url,
+    event.source_listing_url,
+    event.short_description,
+    event.extended_description
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  const locationType = String(event.location_type || "").toLowerCase();
+  if (locationType === "online" || textHasAny(merged, ["zoom", "livestream", "virtual event"])) {
+    return { scope: "online", geographic_tags: ["online"], confidence: 0.85, reason: "online_event_detected" };
+  }
+
+  if (
+    textHasAny(merged, [
+      "oberlin",
+      "tappan square",
+      "finney chapel",
+      "westervelt hall",
+      "dye lecture hall",
+      "allen memorial art museum",
+      "apollo theatre oberlin"
+    ])
+  ) {
+    return {
+      scope: "hyperlocal",
+      geographic_tags: ["oberlin", "lorain-county", "northeast-ohio", "ohio"],
+      confidence: 0.75,
+      reason: "oberlin_specific_venue_or_location"
+    };
+  }
+
+  if (
+    textHasAny(merged, [
+      "elyria",
+      "amherst",
+      "lorain",
+      "avon",
+      "avon lake",
+      "north ridgeville",
+      "wellington",
+      "sheffield",
+      "vermilion",
+      "lorain county"
+    ])
+  ) {
+    return {
+      scope: "lorain_county",
+      geographic_tags: ["lorain-county", "northeast-ohio", "ohio"],
+      confidence: 0.72,
+      reason: "lorain_county_location_detected"
+    };
+  }
+
+  if (
+    textHasAny(merged, [
+      "cleveland",
+      "cuyahoga",
+      "lakewood",
+      "parma",
+      "akron",
+      "northeast ohio"
+    ])
+  ) {
+    return {
+      scope: "northeast_ohio",
+      geographic_tags: ["northeast-ohio", "ohio"],
+      confidence: 0.68,
+      reason: "regional_location_detected"
+    };
+  }
+
+  return null;
+}
+
 /**
  * Hyperlocal classifier agent (OpenAI Responses API — no browser needed).
  *
@@ -63,9 +151,17 @@ export async function runHyperlocalAgent(event, runtimeConfig = {}) {
   const eventSummary = {
     title: event.title || null,
     organizational_sponsor: event.organizational_sponsor || null,
+    start_datetime: event.start_datetime || null,
+    end_datetime: event.end_datetime || null,
     location_type: event.location_type || null,
     location_or_address: event.location_or_address || null,
     source_name: event.source_name || null,
+    source_domain: event.source_domain || null,
+    source_event_url: event.source_event_url || null,
+    source_listing_url: event.source_listing_url || null,
+    event_type_categories: Array.isArray(event.event_type_categories)
+      ? event.event_type_categories.slice(0, 6)
+      : [],
     short_description:
       typeof event.short_description === "string"
         ? event.short_description.slice(0, 300)
@@ -114,6 +210,11 @@ Return a single JSON object only (no markdown):
 
 confidence should be a float 0–1 reflecting how certain you are of the classification.`;
 
+  const heuristic = deriveHeuristicScope(eventSummary);
+  if (heuristic && heuristic.confidence >= 0.8) {
+    return heuristic;
+  }
+
   const response = await client.responses.create({ model, input });
 
   const text = response.output_text || "";
@@ -137,9 +238,14 @@ confidence should be a float 0–1 reflecting how certain you are of the classif
     : 0;
 
   return {
-    scope,
-    geographic_tags,
-    confidence,
-    reason: typeof parsed.reason === "string" ? parsed.reason : ""
+    scope: heuristic?.scope || scope,
+    geographic_tags: heuristic?.geographic_tags?.length ? heuristic.geographic_tags : geographic_tags,
+    confidence: Math.max(confidence, heuristic?.confidence || 0),
+    reason:
+      heuristic && heuristic.scope !== scope
+        ? `${heuristic.reason}; model:${typeof parsed.reason === "string" ? parsed.reason : ""}`.trim()
+        : typeof parsed.reason === "string"
+          ? parsed.reason
+          : heuristic?.reason || ""
   };
 }
