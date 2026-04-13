@@ -77,7 +77,7 @@ export const config = {
   /**
    * Day-of-week for Community Hub mirror sync (0=Sunday … 5=Friday … 6=Saturday).
    * When set, syncHubIfStale fires at most once per calendar day, only on that weekday
-   * (local server time, America/New_York assumed on Render).
+   * (evaluated in America/New_York time).
    * Leave unset (default) to fall back to interval-based HUB_SYNC_INTERVAL_MS throttle.
    */
   communityHubSyncDayOfWeek: (() => {

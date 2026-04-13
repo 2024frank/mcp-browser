@@ -23,11 +23,11 @@ This document supports the **AI Micro-Grant** objective: test **feasibility**, *
 | **AI baseline** | Snapshot of AI output before human edit; used for correction-rate metrics. |
 | **QA status** | `extraction_metadata.qa_status` from programmatic quality gate (+ repair loop). |
 
-Operational cost levers and one-off URL backfill: [`docs/COST_CONTROLS.md`](COST_CONTROLS.md).
+Operational maintenance utilities and one-off URL backfill are documented in `README.md` and API docs.
 
 ## Dedupe vs hub mirror
 
-Incoming events are matched against `community_hub_events` using **normalized URLs** (hostname lowercased, trivial trailing slash removed), **exact title + start_datetime** (trimmed title), and **fuzzy title + start + location** against hub rows. **LLM dedupe** is **on by default** (disable with `OPENAI_DEDUPE_ENABLED=false`). Hub snapshot refresh defaults to **every 1 hour** (`HUB_SYNC_INTERVAL_MS`).
+Incoming events are matched against `community_hub_events` using normalized URLs (hostname lowercased, trivial trailing slash removed), exact title + start datetime (trimmed title), and fuzzy title + start + location against hub rows. LLM dedupe is on by default (disable with `OPENAI_DEDUPE_ENABLED=false`). Hub mirror freshness is driven by legacy JSON sync when configured, otherwise browser snapshot interval (`HUB_SYNC_INTERVAL_MS`) or weekday gate (`HUB_SYNC_DAY_OF_WEEK`).
 
 ## Instrumentation (built into the app)
 
@@ -52,7 +52,7 @@ Only **public** event information intended for attendance; **source attribution*
 
 ## Limitations (state explicitly in write-ups)
 
-- There is **no public Community Hub “list all events” API** from Environmental Dashboard; the pilot uses a **browser snapshot of the public calendar page** into `community_hub_events`. That mirror is **model-mediated**, **partial**, and **not** equivalent to a full authoritative API dump.
+- There is no public, documented Community Hub “list all events” API from Environmental Dashboard. This pilot uses legacy JSON where available and/or browser snapshot extraction into `community_hub_events`; either path can be partial and should be treated as best-effort mirror data.
 - LLM dedupe is **conservative by design**; false negatives/positives require human override.
 - **Past-event filter** uses extracted `start_datetime` quality; bad dates can miscategorize.
 

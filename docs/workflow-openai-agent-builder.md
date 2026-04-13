@@ -11,7 +11,7 @@ Public Community Hub calendar (for humans): [Community Events Calendar](https://
 | **Listing** | From each source, collect event links + title hints | Workflow with **browser MCP** → `MCP_BROWSER_URL` | `openai_listing_v1` → `adapters/agentListing.js` |
 | **Detail → dashboard** | For each link, open page, fill **Community Hub–shaped** fields | Workflow with **browser MCP** | `adapters/agentDetail.js` (chained after listing in `service.js`) |
 | **Dedupe** | Cross-source + vs **known Community Hub** events | Workflow **without** MCP (JSON only), or use our server hook | SQL `findDuplicateMatch` + optional `agents/agentDedupe.js` |
-| **Hyperlocal** | Tag / filter “Oberlin-area” vs broader | Separate small workflow **without** MCP | Stub / future `agents/agentHyperlocal.js` (see below) |
+| **Hyperlocal** | Tag / filter “Oberlin-area” vs broader | Separate small workflow **without** MCP | `agents/agentHyperlocal.js` (active in `service.js` when `OPENAI_API_KEY` is set) |
 
 You can **prototype everything in [OpenAI Agent Builder](https://platform.openai.com)** (same prompts/tools), then keep this service as the **scheduler + database + API** so runs are unattended on Render.
 
@@ -28,11 +28,11 @@ When Source B extracts an event that is the same real-world occurrence as Source
 
 The public calendar page does **not** expose a push webhook to your automation service. Practical options:
 
-1. **Periodic sync job** (recommended): on a schedule, **import** known published events into `community_hub_events` via `POST /api/community-hub-events` (title, `start_datetime`, `source_event_url`, `community_hub_url`, etc.).  
-2. **Manual / admin import** after major publishes.  
-3. **Future**: if the dashboard exposes an API or RSS/ICS export of *published* events, call that from the same job.
+1. **Legacy API sync (default):** `syncHubIfStale` pulls approved/future posts from `COMMUNITY_HUB_LEGACY_POSTS_URL` into `community_hub_events`.  
+2. **Browser snapshot sync (fallback):** `POST /api/community-hub-events/sync-browser` uses MCP + model extraction of the public calendar page.  
+3. **Manual / admin import:** `POST /api/community-hub-events` for one-off rows.
 
-Until the hub feed is wired, dedupe is only as good as **how full** `community_hub_events` is.
+`HUB_SYNC_DAY_OF_WEEK` (for example `5` = Friday) gates auto-sync to one weekday run (America/New_York). When unset, interval mode uses `HUB_SYNC_INTERVAL_MS`.
 
 ## Suggested Agent Builder layout
 
@@ -70,7 +70,7 @@ Export or copy SDK code when stable; the Render service can call the same patter
 |------|---------|
 | `OPENAI_API_KEY` | Listing + detail + dedupe agents on the automation service |
 | `MCP_BROWSER_URL` | Public URL of Playwright MCP (`…/mcp`) |
-| **Community Hub snapshot** | Regular `POST` rows to `/api/community-hub-events` so dedupe matches [the live calendar](https://environmentaldashboard.org/calendar/?show-menu-bar=1) |
+| **Community Hub mirror config** | Set `COMMUNITY_HUB_LEGACY_POSTS_URL` (default) or use browser snapshot endpoint for dedupe freshness against [the live calendar](https://environmentaldashboard.org/calendar/?show-menu-bar=1) |
 | **Hyperlocal policy** | Short written rules (geography, campus vs town) for the fourth agent when implemented |
 
 ## Tests

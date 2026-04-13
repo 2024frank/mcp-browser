@@ -9,7 +9,12 @@ The automation service exposes a small HTTP API for:
 - triggering manual syncs
 - inspecting candidates, staged events, and run history
 
-**Community Hub:** The Environmental Dashboard calendar does **not** provide a public “list all published events” REST API for this app to call. Endpoints under `/api/community-hub-events` read and write a **local SQLite mirror** of what we infer from the **public calendar web page** (browser snapshot). They are **not** proxies to an upstream Hub API.
+**Community Hub:** The Environmental Dashboard calendar does not provide a public, documented “list all published events” REST API for this app to call. Endpoints under `/api/community-hub-events` work with a **local SQLite mirror** populated by either:
+
+- legacy JSON sync (`COMMUNITY_HUB_LEGACY_POSTS_URL`, default path), or
+- browser snapshot extraction (`/api/community-hub-events/sync-browser`, OpenAI + MCP required).
+
+These are not proxies to an upstream Hub API.
 
 ## Health
 
@@ -112,10 +117,30 @@ curl -X PATCH http://localhost:10000/api/sources/<source-id> \
 curl -X POST http://localhost:10000/api/sources/<source-id>/run
 ```
 
+You can override adapter config for one run without changing stored source config:
+
+```bash
+curl -X POST http://localhost:10000/api/sources/<source-id>/run \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "adapter_config": { "max_links": 15, "max_detail_extractions": 10 }
+  }'
+```
+
 ## Run All Due Sources
 
 ```bash
 curl -X POST http://localhost:10000/api/runs/discover-due-sources
+```
+
+## Watch endpoints (incremental new-link mode)
+
+```bash
+curl -X POST http://localhost:10000/api/watch
+```
+
+```bash
+curl -X POST http://localhost:10000/api/sources/<source-id>/watch
 ```
 
 ## Inspect Outputs
@@ -163,4 +188,59 @@ curl -X POST http://localhost:10000/api/community-hub-events \
     "source_event_url": "https://example.com/event/community-clean-up-day",
     "community_hub_url": "https://environmentaldashboard.org/calendar/event/community-clean-up-day"
   }'
+```
+
+### Force browser snapshot sync
+
+```bash
+curl -X POST http://localhost:10000/api/community-hub-events/sync-browser
+```
+
+### Force legacy API sync
+
+```bash
+curl -X POST http://localhost:10000/api/community-hub-events/sync-legacy-api
+```
+
+## Source seed and review endpoints
+
+### Apply seed source config
+
+```bash
+curl -X POST http://localhost:10000/api/sources/apply-seed
+```
+
+### Update staged event review status
+
+```bash
+curl -X PATCH http://localhost:10000/api/events-staging/<event-id> \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "review_status": "rejected",
+    "rejection_reason": "Missing venue details",
+    "fault_agent": "detail_extractor"
+  }'
+```
+
+## Maintenance endpoints (guarded)
+
+Enable these only for controlled operations:
+
+- `ALLOW_MAINTENANCE_RESET=true`
+- `ALLOW_MAINTENANCE_BACKFILL=true`
+
+Reset event research data and re-seed sources:
+
+```bash
+curl -X POST http://localhost:10000/api/maintenance/reset \
+  -H 'Content-Type: application/json' \
+  -d '{"confirm":"RESET"}'
+```
+
+Run canonical URL backfill:
+
+```bash
+curl -X POST http://localhost:10000/api/maintenance/backfill-canonical-urls \
+  -H 'Content-Type: application/json' \
+  -d '{"dry_run":true}'
 ```

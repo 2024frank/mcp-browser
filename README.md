@@ -21,10 +21,12 @@ A longer-term vision (aligned with Dashboard work elsewhere in Ohio) is to **sca
 
 ### Community Hub and APIs
 
-The live [Environmental Dashboard calendar](https://environmentaldashboard.org/calendar) does **not** expose a **public machine-readable “Community Hub API”** for listing everything that is already published. This project therefore:
+The live [Environmental Dashboard calendar](https://environmentaldashboard.org/calendar) does **not** expose a public, documented “list all published events” API. This project therefore keeps a **local mirror** in SQLite (`community_hub_events`) using one of two paths:
 
-- Builds a **local mirror** in SQLite (`community_hub_events`) by **opening the public calendar page** with Playwright MCP and having a model **extract** visible rows (see `adapters/agentHubSnapshot.js`). That mirror is **best-effort** and **model-dependent**, not a full authoritative export.
-- Exposes **`/api/community-hub-events`** on **this automation service** only: it reads/writes **our** mirror for dedupe and research—not an upstream Hub REST API.
+- **Default (deterministic):** legacy JSON feed sync (`COMMUNITY_HUB_LEGACY_POSTS_URL`) via `adapters/communityHubLegacyApi.js`.
+- **Fallback (model-mediated):** browser snapshot extraction of the public calendar page via Playwright MCP + model (`adapters/agentHubSnapshot.js`).
+
+`/api/community-hub-events` endpoints are for **this service's local mirror**, not an upstream Hub REST API.
 
 Humans still use the normal **web form** to submit events to the real hub; this repo prepares records that **match that form shape** for vetting first.
 
@@ -41,8 +43,7 @@ Humans still use the normal **web form** to submit events to the real hub; this 
 | **Playwright MCP** | Optional sibling service (`npm run start:browser`) for remote browser tools used by listing/detail agents. |
 
 **Pilot methodology & metrics:** see [`docs/RESEARCH.md`](docs/RESEARCH.md) (`GET /api/research/snapshot`, `npm run research:snapshot`, `npm run eval:pilot`).
-
-**Cost / ops:** see [`docs/COST_CONTROLS.md`](docs/COST_CONTROLS.md). **URL backfill after deploy:** `npm run backfill:canonical -- --dry-run` then `npm run backfill:canonical`.
+**URL backfill after deploy:** `npm run backfill:canonical -- --dry-run` then `npm run backfill:canonical`.
 
 ---
 
@@ -52,7 +53,8 @@ Agents are **modular steps**, not separate long-running processes. Canonical **`
 
 | Agent (concept) | Module / entry | `fault_agent` key | Role |
 |-----------------|----------------|-------------------|------|
-| **Listing collector** | `adapters/browser.js`, `adapters/agentListing.js`, `adapters/localist.js`, `adapters/ics.js` | `listing_agent` | Discovers event URLs (browser + MCP and/or structured feeds). |
+| **Listing collector** | `adapters/browser.js`, `adapters/agentListing.js`, `adapters/localist.js`, `adapters/ics.js`, `adapters/favaAdapter.js` | `listing_agent` | Discovers event URLs (browser + MCP and/or structured feeds). |
+| **Structured source adapters** | `adapters/heritageCenterAdapter.js`, `adapters/amamAdapter.js` | `listing_agent` | Pulls already-structured events and stages them directly. |
 | **Detail extractor** | `adapters/agentDetail.js` | `detail_extractor` | Opens event pages via MCP, returns **Community Hub–shaped** JSON; fallbacks + completeness scoring. |
 | **Hyperlocal tagger** | `agents/agentHyperlocal.js` | `hyperlocal_agent` | Classifies geographic scope (campus/city/county/region/etc.) from event text. |
 | **Dedupe comparator** | `agents/agentDedupe.js` | `dedupe_agent` | LLM compare against staging + hub snapshot context. |
@@ -110,11 +112,15 @@ The dashboard is designed for **research-grade operations**, not just throughput
 | `OPENAI_API_KEY` | Required for OpenAI-backed agents. |
 | `MCP_BROWSER_URL` or `PLAYWRIGHT_MCP_URL` | Base URL to Playwright MCP (e.g. `/mcp` on your MCP host). |
 | `COMMUNITY_HUB_CALENDAR_URL` | Optional override for hub snapshot (defaults to Environmental Dashboard calendar). |
+| `COMMUNITY_HUB_LEGACY_POSTS_URL` | Legacy approved/future posts JSON endpoint used for default hub mirror sync. Set to empty string to disable legacy sync. |
+| `COMMUNITY_HUB_PUBLIC_POST_BASE` | Base URL used to build canonical public post links for legacy-synced hub rows. |
 | `SKIP_PAST_EVENTS` | Default `true`: auto-reject events whose start is in the past (still stored for audit). Set `false` to disable. |
 | `PAST_EVENT_GRACE_HOURS` | Optional grace window before treating an event as “past.” |
 | `RESEARCH_EXPERIMENT_ID` | Optional label recorded in successful `source_runs` summaries for cohort tracking. |
 | `OPENAI_DEDUPE_ENABLED` | Default `true` (set `false` to save cost). LLM duplicate check uses hub mirror + staging context. |
 | `HUB_SYNC_INTERVAL_MS` | Min milliseconds between automatic hub page snapshots (default **1 hour** on the server; Render example `3600000`). Lower = fresher dedupe memory, more MCP usage. |
+| `HUB_SYNC_DAY_OF_WEEK` | Optional 0-6 day gate (`5` = Friday). When set, hub sync runs at most once on that weekday (America/New_York) and takes precedence over interval gating. |
+| `ALLOW_MAINTENANCE_RESET` / `ALLOW_MAINTENANCE_BACKFILL` | Guardrails for maintenance endpoints; keep `false` by default and enable only for controlled ops. |
 
 Source definitions are seeded from `data/sources.example.json` when configured; the live DB is SQLite under the automation data path (see `src/automation/config.js`).
 
@@ -153,7 +159,7 @@ Aligned with the grant narrative and current codebase, high-value next steps inc
 3. **Stronger duplicate UX** — Side-by-side diff with hub/staging match and quick “merge fields” actions.
 4. **Jobs board parity** — Parallel schema and agents for job postings (mentioned in the broader Dashboard roadmap).
 5. **Accessibility review** — Ensure generated short descriptions and exported views meet WCAG-oriented checks for the public calendar.
-6. **Cost and quota dashboards** — Per-source token/API estimates for sustainable operations (pilot budgeting).
+6. **Ops observability dashboards** — Per-source reliability and extraction trend views for sustainable operations.
 7. **IRB / data handling docs** — Formal data retention and attribution policy as the pilot moves beyond public-event-only scraping.
 
 ---
@@ -161,12 +167,6 @@ Aligned with the grant narrative and current codebase, high-value next steps inc
 ## Ethics and data use (pilot)
 
 Consistent with the application: use **only publicly posted** event information intended to attract participants; **attribute sources**; avoid collecting restricted or private data; design for **accurate representation** and **broad usability** of published calendar content.
-
----
-
-## Budget note (from application)
-
-The submitted budget includes API access, cloud infrastructure, and student research support (total **$5,000**). Line items should be double-checked for typos in the original PDF (e.g. infrastructure figures) before submission.
 
 ---
 

@@ -83,7 +83,9 @@ function shouldExtractEventDetails(source, result) {
   if (!(result.candidates || []).length) {
     return false;
   }
-  if (source.adapter_key !== "openai_listing_v1") {
+  // Adapters that emit detail-page candidates and rely on agentDetail.
+  const detailCapableAdapters = new Set(["openai_listing_v1", "fava_v1"]);
+  if (!detailCapableAdapters.has(source.adapter_key)) {
     return false;
   }
   return source.adapter_config?.extract_event_details !== false;
@@ -625,9 +627,10 @@ export function createAutomationService(repository, runtimeConfig) {
       // Step 4: Run detail→hyperlocal→dedup only for new candidates
       let extracted = 0;
       const maxDetail = Number(source.adapter_config?.max_detail_extractions ?? 25);
-      const shouldExtract =
-        source.adapter_key === "openai_listing_v1" &&
-        source.adapter_config?.extract_event_details !== false;
+      const shouldExtract = shouldExtractEventDetails(source, {
+        candidates: newCandidates,
+        stagedEvents: []
+      });
       const detailFeedback = repository.getAgentPromptGuidance("detail_extractor", 8);
       const hyperlocalFeedback = repository.getAgentPromptGuidance("hyperlocal_agent", 8);
       const dedupeFeedback = repository.getAgentPromptGuidance("dedupe_agent", 8);
