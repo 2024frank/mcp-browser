@@ -8,6 +8,8 @@ import { runIcsAdapter } from "./adapters/ics.js";
 import { runLocalistAdapter } from "./adapters/localist.js";
 import { buildDedupeContext, runDuplicateCompareAgent } from "./agents/agentDedupe.js";
 import { runHyperlocalAgent } from "./agents/agentHyperlocal.js";
+import { runQualityGateAgent } from "./agents/agentQualityGate.js";
+import { runRepairAgent } from "./agents/agentRepair.js";
 import { parseJson, nowIso, sleep } from "./utils.js";
 
 /* ── Agent activity log ──────────────────────────────────────────────────────
@@ -36,6 +38,27 @@ function shouldExtractEventDetails(source, result) {
     return false;
   }
   return source.adapter_config?.extract_event_details !== false;
+}
+
+function mergeRepairIntoEvent(target, repaired) {
+  for (const field of [
+    "title",
+    "organizational_sponsor",
+    "start_datetime",
+    "end_datetime",
+    "location_type",
+    "location_or_address",
+    "room_number",
+    "event_link",
+    "short_description",
+    "extended_description",
+    "artwork_url",
+    "community_hub_payload"
+  ]) {
+    if (repaired[field] !== undefined && repaired[field] !== null) {
+      target[field] = repaired[field];
+    }
+  }
 }
 
 const adapters = {
@@ -218,6 +241,59 @@ export function createAutomationService(repository, runtimeConfig) {
         event.duplicate_reason = duplicateMatch.duplicate_reason;
         event.community_hub_payload.is_duplicate = event.is_duplicate;
         event.community_hub_payload.duplicate_match_url = event.duplicate_match_url;
+
+        const qa = await runQualityGateAgent(event, runtimeConfig);
+        if (!qa.passed) {
+          logActivity({ type: "qa_fail", title: event.title, issues: qa.issues.length });
+          for (const issue of qa.issues) {
+            repository.addAgentFeedback({
+              staging_event_id: event.id || event.source_event_url || "pending",
+              source_id: source.id,
+              fault_agent: issue.fault_agent || "other",
+              rejection_reason: issue.message,
+              reviewer_name: "qa_agent"
+            });
+          }
+          const repair = await runRepairAgent(
+            source,
+            event,
+            qa.issues,
+            runtimeConfig,
+            detailFeedback
+          );
+          if (repair.attempted && repair.repairedEvent) {
+            mergeRepairIntoEvent(event, repair.repairedEvent);
+            const qaAfterRepair = await runQualityGateAgent(event, runtimeConfig);
+            if (!qaAfterRepair.passed) {
+              event.review_status = "rejected";
+              event.extraction_metadata = {
+                ...(event.extraction_metadata || {}),
+                qa_status: "rejected",
+                qa_issues: qaAfterRepair.issues
+              };
+              logActivity({ type: "qa_reject", title: event.title, issues: qaAfterRepair.issues.length });
+            } else {
+              event.extraction_metadata = {
+                ...(event.extraction_metadata || {}),
+                qa_status: "repaired_pass"
+              };
+              logActivity({ type: "qa_repaired", title: event.title });
+            }
+          } else {
+            event.review_status = "rejected";
+            event.extraction_metadata = {
+              ...(event.extraction_metadata || {}),
+              qa_status: "rejected",
+              qa_issues: qa.issues
+            };
+            logActivity({ type: "qa_reject", title: event.title, issues: qa.issues.length });
+          }
+        } else {
+          event.extraction_metadata = {
+            ...(event.extraction_metadata || {}),
+            qa_status: "pass"
+          };
+        }
 
         const sourceCandidate =
           result.candidates?.find((candidate) => candidate.event_url === event.source_event_url) || null;
@@ -409,6 +485,59 @@ export function createAutomationService(repository, runtimeConfig) {
         event.duplicate_reason      = duplicateMatch.duplicate_reason;
         event.community_hub_payload.is_duplicate        = event.is_duplicate;
         event.community_hub_payload.duplicate_match_url = event.duplicate_match_url;
+
+        const qa = await runQualityGateAgent(event, runtimeConfig);
+        if (!qa.passed) {
+          logActivity({ type: "qa_fail", title: event.title, issues: qa.issues.length });
+          for (const issue of qa.issues) {
+            repository.addAgentFeedback({
+              staging_event_id: event.id || event.source_event_url || "pending",
+              source_id: source.id,
+              fault_agent: issue.fault_agent || "other",
+              rejection_reason: issue.message,
+              reviewer_name: "qa_agent"
+            });
+          }
+          const repair = await runRepairAgent(
+            source,
+            event,
+            qa.issues,
+            runtimeConfig,
+            detailFeedback
+          );
+          if (repair.attempted && repair.repairedEvent) {
+            mergeRepairIntoEvent(event, repair.repairedEvent);
+            const qaAfterRepair = await runQualityGateAgent(event, runtimeConfig);
+            if (!qaAfterRepair.passed) {
+              event.review_status = "rejected";
+              event.extraction_metadata = {
+                ...(event.extraction_metadata || {}),
+                qa_status: "rejected",
+                qa_issues: qaAfterRepair.issues
+              };
+              logActivity({ type: "qa_reject", title: event.title, issues: qaAfterRepair.issues.length });
+            } else {
+              event.extraction_metadata = {
+                ...(event.extraction_metadata || {}),
+                qa_status: "repaired_pass"
+              };
+              logActivity({ type: "qa_repaired", title: event.title });
+            }
+          } else {
+            event.review_status = "rejected";
+            event.extraction_metadata = {
+              ...(event.extraction_metadata || {}),
+              qa_status: "rejected",
+              qa_issues: qa.issues
+            };
+            logActivity({ type: "qa_reject", title: event.title, issues: qa.issues.length });
+          }
+        } else {
+          event.extraction_metadata = {
+            ...(event.extraction_metadata || {}),
+            qa_status: "pass"
+          };
+        }
 
         const candidateUpsert = repository.upsertCandidate(source.id, candidate);
         repository.upsertStagingEvent(source.id, candidateUpsert?.record?.id || null, event);
