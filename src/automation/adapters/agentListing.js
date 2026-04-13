@@ -221,9 +221,15 @@ FINAL OUTPUT — REQUIRED RULES:
     // Skip if no title or no date (the two hard requirements)
     if (!ev.title?.trim() || !ev.start_datetime) continue;
 
+    const syntheticKey = makeFingerprint([
+      source.id,
+      listingUrl,
+      ev.title.trim().toLowerCase(),
+      ev.start_datetime
+    ]);
     const eventUrl = typeof ev.source_event_url === "string" && ev.source_event_url.startsWith("http")
       ? ev.source_event_url
-      : listingUrl;
+      : `${listingUrl.replace(/#.*$/, "")}#event-${syntheticKey.slice(0, 16)}`;
 
     // Deduplicate by URL+title combo
     const dedupeKey = `${eventUrl}::${ev.title.trim().toLowerCase()}`;
@@ -247,6 +253,11 @@ FINAL OUTPUT — REQUIRED RULES:
         source_event_url: eventUrl
       }, source);
       stagingEvent = dashboardPayloadToStagingEvent(hub, source, candidate);
+      stagingEvent.extraction_metadata = {
+        extractor: "single_page_extraction_v1",
+        model,
+        source_event_url: eventUrl
+      };
     } catch (err) {
       // normalizeDashboardSubmission throws if title is missing — already checked above
       console.warn(`single_page_extraction: skipping event "${ev.title}" — ${err.message}`);
