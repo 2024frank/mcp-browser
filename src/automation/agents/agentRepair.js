@@ -1,3 +1,11 @@
+/**
+ * Repair agent (post–quality gate)
+ * --------------------------------
+ * When agentQualityGate reports fixable issues attributed to detail_extractor,
+ * re-runs extractDashboardEventFromCandidate with synthetic candidate + targeted
+ * “repair” lines in the prompt. Does not replace human review; avoids duplicate
+ * full-pipeline code paths (invoked only from service.runQaRepairLoop).
+ */
 import { extractDashboardEventFromCandidate } from "../adapters/agentDetail.js";
 
 const REPAIRABLE_CODES = new Set([

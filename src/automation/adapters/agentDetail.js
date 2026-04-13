@@ -1,3 +1,11 @@
+/**
+ * Detail extractor agent (fault_agent: detail_extractor)
+ * ------------------------------------------------------
+ * Given one event URL (and optional title hint), uses OpenAI with remote Playwright MCP
+ * to read the live page and emit JSON aligned with the Community Hub calendar form.
+ * Applies fallbacks (title from URL/hint, sponsor from source), completeness scoring,
+ * and consumes reviewer/QRepair guidance from agent_feedback when provided.
+ */
 import OpenAI from "openai";
 
 import { dashboardPayloadToStagingEvent, normalizeDashboardSubmission } from "../community-hub.js";

@@ -2,7 +2,7 @@ import fs from "node:fs";
 
 import Database from "better-sqlite3";
 
-import { addMinutes, eventTitleKey, makeId, nowIso, parseJson } from "./utils.js";
+import { addMinutes, eventTitleKey, makeId, normalizeCanonicalEventUrl, nowIso, parseJson } from "./utils.js";
 
 function sourceRowToObject(row) {
   if (!row) {
@@ -350,6 +350,8 @@ export function createRepository(config) {
       start_datetime TEXT,
       end_datetime TEXT,
       location_or_address TEXT,
+      short_description TEXT,
+      extended_description TEXT,
       source_event_url TEXT,
       community_hub_url TEXT,
       raw_payload_json TEXT,
@@ -407,7 +409,9 @@ export function createRepository(config) {
     `ALTER TABLE events_staging ADD COLUMN geographic_tags_json TEXT NOT NULL DEFAULT '[]'`,
     `ALTER TABLE events_staging ADD COLUMN ai_baseline_payload_json TEXT`,
     `ALTER TABLE events_staging ADD COLUMN extraction_metadata_json TEXT NOT NULL DEFAULT '{}'`,
-    `ALTER TABLE events_staging ADD COLUMN reviewed_at TEXT`
+    `ALTER TABLE events_staging ADD COLUMN reviewed_at TEXT`,
+    `ALTER TABLE community_hub_events ADD COLUMN short_description TEXT`,
+    `ALTER TABLE community_hub_events ADD COLUMN extended_description TEXT`
   ]) {
     try {
       db.exec(sql);
@@ -584,11 +588,11 @@ export function createRepository(config) {
     `),
     insertHubEvent: db.prepare(`
       INSERT INTO community_hub_events (
-        id, title, start_datetime, end_datetime, location_or_address, source_event_url,
-        community_hub_url, raw_payload_json, created_at, updated_at
+        id, title, start_datetime, end_datetime, location_or_address, short_description,
+        extended_description, source_event_url, community_hub_url, raw_payload_json, created_at, updated_at
       ) VALUES (
-        @id, @title, @start_datetime, @end_datetime, @location_or_address, @source_event_url,
-        @community_hub_url, @raw_payload_json, @created_at, @updated_at
+        @id, @title, @start_datetime, @end_datetime, @location_or_address, @short_description,
+        @extended_description, @source_event_url, @community_hub_url, @raw_payload_json, @created_at, @updated_at
       )
     `),
     updateHubEventBySourceUrl: db.prepare(`
@@ -597,6 +601,8 @@ export function createRepository(config) {
         start_datetime = @start_datetime,
         end_datetime = @end_datetime,
         location_or_address = @location_or_address,
+        short_description = @short_description,
+        extended_description = @extended_description,
         community_hub_url = @community_hub_url,
         raw_payload_json = @raw_payload_json,
         updated_at = @updated_at
@@ -819,7 +825,12 @@ export function createRepository(config) {
 
     upsertStagingEvent(sourceId, sourceCandidateId, event) {
       const now = nowIso();
-      const existing = statements.findStagingBySourceUrl.get(sourceId, event.source_event_url);
+      const rawUrl = (event.source_event_url || "").trim();
+      const seUrl = (normalizeCanonicalEventUrl(rawUrl) || rawUrl) || null;
+      let existing = seUrl ? statements.findStagingBySourceUrl.get(sourceId, seUrl) : null;
+      if (!existing && rawUrl && rawUrl !== seUrl) {
+        existing = statements.findStagingBySourceUrl.get(sourceId, rawUrl);
+      }
       const row = {
         id: existing?.id || makeId("evt"),
         source_id: sourceId,
@@ -840,7 +851,7 @@ export function createRepository(config) {
         source_name: event.source_name || null,
         source_domain: event.source_domain || null,
         source_listing_url: event.source_listing_url || null,
-        source_event_url: event.source_event_url,
+        source_event_url: seUrl || rawUrl,
         is_duplicate:
           event.is_duplicate === null || event.is_duplicate === undefined
             ? null
@@ -1000,6 +1011,8 @@ export function createRepository(config) {
         start_datetime: input.start_datetime || null,
         end_datetime: input.end_datetime || null,
         location_or_address: input.location_or_address || null,
+        short_description: input.short_description || null,
+        extended_description: input.extended_description || null,
         source_event_url: input.source_event_url || null,
         community_hub_url: input.community_hub_url || null,
         raw_payload_json: JSON.stringify(input.raw_payload || null),
@@ -1011,25 +1024,40 @@ export function createRepository(config) {
     },
 
     upsertCommunityHubEvent(input) {
-      const url = input.source_event_url?.trim();
-      if (!url) {
+      const raw = input.source_event_url?.trim();
+      if (!raw) {
         throw new Error("upsertCommunityHubEvent requires source_event_url");
       }
-      const existing = statements.findHubBySourceUrl.get(url);
+      const canonical = normalizeCanonicalEventUrl(raw) || raw;
+      let existing = statements.findHubBySourceUrl.get(canonical);
+      if (!existing && raw !== canonical) {
+        existing = statements.findHubBySourceUrl.get(raw);
+      }
       const now = nowIso();
+      const hubUrl = (input.community_hub_url || "").trim() || canonical;
+      const incShort =
+        typeof input.short_description === "string" ? input.short_description.trim() : "";
+      const incExt =
+        typeof input.extended_description === "string" ? input.extended_description.trim() : "";
+      const mergeDesc = (incoming, prior) => (incoming ? incoming : prior || null);
       const payload = {
         title: input.title || null,
         start_datetime: input.start_datetime || null,
         end_datetime: input.end_datetime || null,
         location_or_address: input.location_or_address || null,
-        source_event_url: url,
-        community_hub_url: input.community_hub_url || url,
+        short_description: mergeDesc(incShort, existing?.short_description),
+        extended_description: mergeDesc(incExt, existing?.extended_description),
+        source_event_url: canonical,
+        community_hub_url: normalizeCanonicalEventUrl(hubUrl) || hubUrl,
         raw_payload_json: JSON.stringify(input.raw_payload || { snapshot: true }),
         updated_at: now
       };
       if (existing) {
-        statements.updateHubEventBySourceUrl.run(payload);
-        return { inserted: false, record: statements.findHubBySourceUrl.get(url) };
+        statements.updateHubEventBySourceUrl.run({
+          ...payload,
+          source_event_url: existing.source_event_url
+        });
+        return { inserted: false, record: statements.findHubBySourceUrl.get(existing.source_event_url) };
       }
       const row = {
         id: makeId("hub"),
@@ -1042,6 +1070,8 @@ export function createRepository(config) {
         start_datetime: row.start_datetime,
         end_datetime: row.end_datetime,
         location_or_address: row.location_or_address,
+        short_description: row.short_description,
+        extended_description: row.extended_description,
         source_event_url: row.source_event_url,
         community_hub_url: row.community_hub_url,
         raw_payload_json: row.raw_payload_json,
@@ -1052,8 +1082,38 @@ export function createRepository(config) {
     },
 
     findDuplicateMatch(event, sourceId) {
+      const resolveHubByUrl = (url) => {
+        if (!url) return null;
+        const u = String(url).trim();
+        let row = statements.findHubBySourceUrl.get(u);
+        if (row) return row;
+        const norm = normalizeCanonicalEventUrl(u);
+        if (norm && norm !== u) {
+          row = statements.findHubBySourceUrl.get(norm);
+          if (row) return row;
+        }
+        if (!norm) return null;
+        const allHub = db.prepare(`SELECT * FROM community_hub_events`).all();
+        return allHub.find((r) => normalizeCanonicalEventUrl(r.source_event_url) === norm) || null;
+      };
+
+      const resolveStagingByUrl = (url) => {
+        if (!url) return null;
+        const u = String(url).trim();
+        let row = statements.findStagingBySourceUrlAny.get(u);
+        if (row && row.source_id !== sourceId) return row;
+        const norm = normalizeCanonicalEventUrl(u);
+        if (norm && norm !== u) {
+          row = statements.findStagingBySourceUrlAny.get(norm);
+          if (row && row.source_id !== sourceId) return row;
+        }
+        if (!norm) return null;
+        const rows = db.prepare(`SELECT * FROM events_staging WHERE source_id != ?`).all(sourceId);
+        return rows.find((r) => normalizeCanonicalEventUrl(r.source_event_url) === norm) || null;
+      };
+
       if (event.source_event_url) {
-        const hubMatch = statements.findHubBySourceUrl.get(event.source_event_url);
+        const hubMatch = resolveHubByUrl(event.source_event_url);
         if (hubMatch) {
           return {
             is_duplicate: true,
@@ -1062,8 +1122,8 @@ export function createRepository(config) {
           };
         }
 
-        const stagingUrlMatch = statements.findStagingBySourceUrlAny.get(event.source_event_url);
-        if (stagingUrlMatch && stagingUrlMatch.source_id !== sourceId) {
+        const stagingUrlMatch = resolveStagingByUrl(event.source_event_url);
+        if (stagingUrlMatch) {
           return {
             is_duplicate: true,
             duplicate_match_url: stagingUrlMatch.source_event_url,
@@ -1073,7 +1133,8 @@ export function createRepository(config) {
       }
 
       if (event.title && event.start_datetime) {
-        const hubTitleMatch = statements.findHubByTitleAndStart.get(event.title, event.start_datetime);
+        const titleTrim = String(event.title).trim();
+        const hubTitleMatch = statements.findHubByTitleAndStart.get(titleTrim, event.start_datetime);
         if (hubTitleMatch) {
           return {
             is_duplicate: true,
@@ -1083,7 +1144,7 @@ export function createRepository(config) {
         }
 
         const stagingTitleMatch = statements.findStagingByTitleAndStart.get(
-          event.title,
+          titleTrim,
           event.start_datetime,
           sourceId
         );
@@ -1098,6 +1159,22 @@ export function createRepository(config) {
 
       const eventKey = eventTitleKey(event.title);
       if (eventKey && event.start_datetime) {
+        const hubRows = db.prepare(`SELECT * FROM community_hub_events`).all();
+        const hubFuzzy = hubRows.find((h) => {
+          return (
+            eventTitleKey(h.title) === eventKey &&
+            h.start_datetime === event.start_datetime &&
+            String(h.location_or_address || "").trim() === String(event.location_or_address || "").trim()
+          );
+        });
+        if (hubFuzzy) {
+          return {
+            is_duplicate: true,
+            duplicate_match_url: hubFuzzy.community_hub_url || hubFuzzy.source_event_url,
+            duplicate_reason: "fuzzy_title_start_location_in_community_hub"
+          };
+        }
+
         const nearby = this.listStaging({ sourceId: null, limit: 200 });
         const fuzzyMatch = nearby.find((candidate) => {
           if (candidate.source_id === sourceId) {
@@ -1428,6 +1505,34 @@ export function createRepository(config) {
           return acc;
         }, {});
       const failureSummary = Object.values(failureGroups).sort((a, b) => b.count - a.count);
+      const learningRows = db.prepare(`
+        SELECT fault_agent,
+               rejection_reason,
+               COUNT(*) AS count
+        FROM agent_feedback
+        GROUP BY fault_agent, rejection_reason
+        ORDER BY count DESC
+        LIMIT 40
+      `).all();
+      const learningByAgent = learningRows.reduce((acc, row) => {
+        const key = row.fault_agent || "other";
+        if (!acc[key]) acc[key] = [];
+        acc[key].push({
+          rejection_reason: row.rejection_reason || "",
+          count: Number(row.count || 0)
+        });
+        return acc;
+      }, {});
+      const learningFeedback = Object.entries(learningByAgent)
+        .map(([fault_agent, reasons]) => ({
+          fault_agent,
+          top_reasons: reasons.sort((a, b) => b.count - a.count).slice(0, 5)
+        }))
+        .sort((a, b) => {
+          const aCount = a.top_reasons.reduce((sum, row) => sum + row.count, 0);
+          const bCount = b.top_reasons.reduce((sum, row) => sum + row.count, 0);
+          return bCount - aCount;
+        });
 
       return {
         agent1: { total_candidates: totalCandidates, by_source: candidates },
@@ -1464,6 +1569,9 @@ export function createRepository(config) {
         failures: {
           groups: failureSummary
         },
+        learning_feedback: {
+          by_agent: learningFeedback
+        },
         recent_runs: recentRuns
       };
     },
@@ -1493,6 +1601,159 @@ export function createRepository(config) {
         events_staging: statements.countTable("events_staging").get().count,
         community_hub_events: statements.countTable("community_hub_events").get().count,
         source_runs: statements.countTable("source_runs").get().count
+      };
+    },
+
+    /**
+     * Compact JSON snapshot for pilot research exports (feasibility / accuracy / throughput).
+     * Safe to call from GET /api/research/snapshot for lab notebooks or IRB appendices.
+     */
+    getResearchSnapshot() {
+      const counts = this.getSummaryCounts();
+      const byReview = db
+        .prepare(
+          `SELECT review_status, COUNT(*) AS n FROM events_staging GROUP BY review_status ORDER BY n DESC`
+        )
+        .all();
+      const byQa = db
+        .prepare(
+          `SELECT COALESCE(json_extract(extraction_metadata_json, '$.qa_status'), 'unknown') AS qa_status, COUNT(*) AS n
+           FROM events_staging GROUP BY qa_status ORDER BY n DESC`
+        )
+        .all();
+      const pastAutoRejected = db
+        .prepare(
+          `SELECT COUNT(*) AS n FROM events_staging
+           WHERE json_extract(extraction_metadata_json, '$.auto_reject_reason') = 'event_start_in_past'`
+        )
+        .get().n;
+      const dupStaging = db
+        .prepare(`SELECT COUNT(*) AS n FROM events_staging WHERE is_duplicate = 1`)
+        .get().n;
+      const pendingHuman = db
+        .prepare(
+          `SELECT COUNT(*) AS n FROM events_staging
+           WHERE review_status = 'pending' AND (is_duplicate IS NULL OR is_duplicate = 0)
+           AND IFNULL(json_extract(extraction_metadata_json, '$.auto_reject_reason'), '') != 'event_start_in_past'`
+        )
+        .get().n;
+      const feedbackTotal = db.prepare(`SELECT COUNT(*) AS n FROM agent_feedback`).get().n;
+      const feedback7d = db
+        .prepare(
+          `SELECT COUNT(*) AS n FROM agent_feedback WHERE created_at >= datetime('now', '-7 day')`
+        )
+        .get().n;
+      const scopeDist = db
+        .prepare(
+          `SELECT hyperlocal_scope, COUNT(*) AS n FROM events_staging WHERE hyperlocal_scope IS NOT NULL
+           GROUP BY hyperlocal_scope ORDER BY n DESC`
+        )
+        .all();
+
+      return {
+        generated_at: nowIso(),
+        counts,
+        staging: {
+          by_review_status: byReview,
+          by_qa_status: byQa,
+          duplicates_flagged: dupStaging,
+          past_events_auto_rejected: pastAutoRejected,
+          pending_human_review: pendingHuman
+        },
+        hyperlocal_scope_distribution: scopeDist,
+        agent_feedback: { total_rows: feedbackTotal, last_7_days: feedback7d }
+      };
+    },
+
+    /**
+     * Normalize stored URLs for dedupe alignment (run once after deploy or when legacy rows
+     * predate canonical URL logic). Hub: if two rows collapse to the same canonical URL, the
+     * later row (by id) is deleted. Staging: rows that would violate UNIQUE(source_id, url) are skipped.
+     * @param {{ dryRun?: boolean, includeStaging?: boolean }} [options]
+     */
+    backfillCanonicalUrls(options = {}) {
+      const dryRun = Boolean(options.dryRun);
+      const includeStaging = options.includeStaging !== false;
+      const now = nowIso();
+
+      const hubRows = db.prepare(`SELECT * FROM community_hub_events ORDER BY id`).all();
+      let hubUpdated = 0;
+      let hubDeleted = 0;
+      let hubUnchanged = 0;
+
+      for (const row of hubRows) {
+        const raw = (row.source_event_url || "").trim();
+        if (!raw) {
+          hubUnchanged += 1;
+          continue;
+        }
+        const canon = normalizeCanonicalEventUrl(raw) || raw;
+        if (canon === raw) {
+          hubUnchanged += 1;
+          continue;
+        }
+
+        const occupant = db.prepare(`SELECT id FROM community_hub_events WHERE source_event_url = ?`).get(canon);
+        if (occupant && occupant.id !== row.id) {
+          if (!dryRun) {
+            db.prepare(`DELETE FROM community_hub_events WHERE id = ?`).run(row.id);
+          }
+          hubDeleted += 1;
+          continue;
+        }
+
+        if (!dryRun) {
+          const cHub = (row.community_hub_url || "").trim();
+          const canonHub = normalizeCanonicalEventUrl(cHub) || cHub || canon;
+          db.prepare(
+            `UPDATE community_hub_events SET source_event_url = ?, community_hub_url = ?, updated_at = ? WHERE id = ?`
+          ).run(canon, canonHub, now, row.id);
+        }
+        hubUpdated += 1;
+      }
+
+      const staging = { updated: 0, skipped_conflict: 0, unchanged: 0 };
+      if (includeStaging) {
+        const stRows = db.prepare(`SELECT * FROM events_staging ORDER BY id`).all();
+        for (const row of stRows) {
+          const raw = (row.source_event_url || "").trim();
+          if (!raw) {
+            staging.unchanged += 1;
+            continue;
+          }
+          const canon = normalizeCanonicalEventUrl(raw) || raw;
+          if (canon === raw) {
+            staging.unchanged += 1;
+            continue;
+          }
+
+          const occupant = db
+            .prepare(`SELECT id FROM events_staging WHERE source_id = ? AND source_event_url = ?`)
+            .get(row.source_id, canon);
+          if (occupant && occupant.id !== row.id) {
+            staging.skipped_conflict += 1;
+            continue;
+          }
+
+          if (!dryRun) {
+            db.prepare(`UPDATE events_staging SET source_event_url = ?, updated_at = ? WHERE id = ?`).run(
+              canon,
+              now,
+              row.id
+            );
+          }
+          staging.updated += 1;
+        }
+      }
+
+      return {
+        dry_run: dryRun,
+        hub: {
+          updated: hubUpdated,
+          deleted: hubDeleted,
+          unchanged: hubUnchanged
+        },
+        staging
       };
     },
 

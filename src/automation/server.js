@@ -6,6 +6,7 @@ import express from "express";
 import { config } from "./config.js";
 import { createRepository } from "./db.js";
 import { syncCommunityHubCalendarFromBrowser } from "./adapters/agentHubSnapshot.js";
+import { syncCommunityHubFromLegacyApi } from "./adapters/communityHubLegacyApi.js";
 import { runPosterExtractionAgent } from "./agents/agentPoster.js";
 import { createAutomationService, agentActivityLog } from "./service.js";
 import { makeId, nowIso } from "./utils.js";
@@ -31,7 +32,11 @@ app.get("/", (_request, response) => {
       event_candidates: "/api/event-candidates",
       events_staging: "/api/events-staging",
       community_hub_events: "/api/community-hub-events",
-      community_hub_events_sync_browser: "POST /api/community-hub-events/sync-browser"
+      community_hub_events_sync_legacy_api: "POST /api/community-hub-events/sync-legacy-api",
+      community_hub_events_sync_browser: "POST /api/community-hub-events/sync-browser",
+      research_snapshot: "/api/research/snapshot",
+      maintenance_backfill_canonical:
+        "POST /api/maintenance/backfill-canonical-urls (requires ALLOW_MAINTENANCE_BACKFILL=true)"
     }
   });
 });
@@ -77,7 +82,10 @@ app.patch("/api/sources/:id", (request, response) => {
 
 app.post("/api/sources/:id/run", async (request, response) => {
   try {
-    const result = await automationService.processSource(request.params.id);
+    const patch = request.body?.adapter_config;
+    const result = await automationService.processSource(request.params.id, {
+      adapter_config: patch && typeof patch === "object" ? patch : undefined
+    });
     response.json(result);
   } catch (error) {
     response.status(500).json({
@@ -222,12 +230,14 @@ app.get("/api/agent-activity", (_request, response) => {
   response.json({ activity: [...agentActivityLog].reverse() });
 });
 
+/** Local mirror of published calendar rows (SQLite) — not an upstream Environmental Dashboard API. */
 app.get("/api/community-hub-events", (request, response) => {
   response.json({
     community_hub_events: repository.listHubEvents(Number(request.query.limit || 100))
   });
 });
 
+/** Insert/update one mirrored hub row (manual seed or tooling) — still not calling a Hub API. */
 app.post("/api/community-hub-events", (request, response) => {
   const body = request.body || {};
   if (!body.title && !body.source_event_url) {
@@ -335,6 +345,62 @@ app.get("/api/metrics/history", (_request, response) => {
     history: metrics.history || { days: 0, by_day: [] },
     failures: metrics.failures || { groups: [] }
   });
+});
+
+/**
+ * GET /api/research/snapshot
+ * Frozen-friendly counts for pilot papers: QA distribution, scope, feedback volume,
+ * past-event auto-filter, pending human queue. No secrets.
+ */
+app.get("/api/research/snapshot", (_request, response) => {
+  const snap = repository.getResearchSnapshot();
+  response.json({
+    ...snap,
+    config_flags: {
+      skip_past_events: config.skipPastEventsForPipeline,
+      past_event_grace_hours: config.pastEventGraceHours,
+      openai_dedupe_enabled: config.openaiDedupeEnabled,
+      research_experiment_id: config.researchExperimentId,
+      hub_snapshot_url: config.communityHubCalendarUrl
+    }
+  });
+});
+
+/**
+ * POST /api/maintenance/backfill-canonical-urls
+ * Body: { "dry_run": true, "staging": true } — staging defaults true; set staging:false for hub-only.
+ * Requires ALLOW_MAINTENANCE_BACKFILL=true (avoid accidental public calls on Render).
+ */
+app.post("/api/maintenance/backfill-canonical-urls", (request, response) => {
+  if (process.env.ALLOW_MAINTENANCE_BACKFILL !== "true") {
+    response.status(403).json({
+      error: "Disabled. Set ALLOW_MAINTENANCE_BACKFILL=true temporarily, then unset after running."
+    });
+    return;
+  }
+  const body = request.body || {};
+  const result = repository.backfillCanonicalUrls({
+    dryRun: body.dry_run === true,
+    includeStaging: body.staging !== false
+  });
+  response.json(result);
+});
+
+/** Pull approved future posts from Community Hub legacy JSON (no OpenAI/MCP). */
+app.post("/api/community-hub-events/sync-legacy-api", async (request, response) => {
+  try {
+    const body = request.body || {};
+    const result = await syncCommunityHubFromLegacyApi(repository, {
+      ...config,
+      communityHubLegacyPostsUrl:
+        body.posts_url || body.legacy_posts_url || config.communityHubLegacyPostsUrl,
+      communityHubPublicPostBase:
+        body.public_post_base || config.communityHubPublicPostBase
+    });
+    response.json(result);
+  } catch (error) {
+    response.status(500).json({ error: error.message });
+  }
 });
 
 app.post("/api/community-hub-events/sync-browser", async (request, response) => {

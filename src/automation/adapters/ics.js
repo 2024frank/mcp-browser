@@ -1,3 +1,9 @@
+/**
+ * Listing / ingest adapter — ICS feeds (adapter: ics_v1)
+ * -----------------------------------------------------
+ * Parses public .ics URLs into Community Hub–shaped events; listing_agent issues
+ * usually mean feed URL or parse configuration, not LLM extraction.
+ */
 import * as ical from "node-ical";
 
 import { mapNormalizedEventToCommunityHub } from "../community-hub.js";

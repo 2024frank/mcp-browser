@@ -2,7 +2,7 @@
 
 This matches the intended operator flow: **sources → listing agent → detail agent → dedupe (Community Hub aware) → optional hyperlocal → review**.
 
-Public Community Hub calendar (for humans): [Community Events Calendar](https://environmentaldashboard.org/calendar?show-menu-bar=1).
+Public Community Hub calendar (for humans): [Community Events Calendar](https://environmentaldashboard.org/calendar/?show-menu-bar=1).
 
 ## How this maps to code in this repo
 
@@ -70,7 +70,7 @@ Export or copy SDK code when stable; the Render service can call the same patter
 |------|---------|
 | `OPENAI_API_KEY` | Listing + detail + dedupe agents on the automation service |
 | `MCP_BROWSER_URL` | Public URL of Playwright MCP (`…/mcp`) |
-| **Community Hub snapshot** | Regular `POST` rows to `/api/community-hub-events` so dedupe matches [the live calendar](https://environmentaldashboard.org/calendar?show-menu-bar=1) |
+| **Community Hub snapshot** | Regular `POST` rows to `/api/community-hub-events` so dedupe matches [the live calendar](https://environmentaldashboard.org/calendar/?show-menu-bar=1) |
 | **Hyperlocal policy** | Short written rules (geography, campus vs town) for the fourth agent when implemented |
 
 ## Tests

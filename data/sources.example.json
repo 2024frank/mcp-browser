@@ -46,37 +46,31 @@
     "source_id": "oberlin-heritage-center",
     "source_name": "Oberlin Heritage Center",
     "source_domain": "oberlinheritagecenter.org",
-    "source_type": "browser",
-    "listing_url": "https://www.oberlinheritagecenter.org/eventsnews",
+    "source_type": "api",
+    "listing_url": "https://www.oberlinheritagecenter.org/wp-admin/admin-ajax.php?action=fetch_Events",
     "api_base_url": null,
     "ics_url": null,
-    "adapter_key": "openai_listing_v1",
+    "adapter_key": "heritage_center_v1",
     "poll_interval_minutes": 720,
     "is_active": true,
     "attribution_label": "Oberlin Heritage Center",
-    "notes": "Heritage Society events — tours, lectures, and historical programs. Uses single_page_extraction because the site mixes news + events without deep event URLs.",
-    "adapter_config": {
-      "single_page_extraction": true,
-      "max_events_from_listing": 20
-    }
+    "notes": "Heritage Society events — tours, lectures, and historical programs. Uses WordPress ECS AJAX endpoint returning JSON directly; no browser or OpenAI needed.",
+    "adapter_config": {}
   },
   {
     "source_id": "amam",
     "source_name": "Allen Memorial Art Museum (AMAM)",
     "source_domain": "amam.oberlin.edu",
     "source_type": "browser",
-    "listing_url": "https://amam.oberlin.edu/events/",
+    "listing_url": "https://amam.oberlin.edu/exhibitions-events/events",
     "api_base_url": null,
     "ics_url": null,
-    "adapter_key": "openai_listing_v1",
+    "adapter_key": "amam_camoufox_v1",
     "poll_interval_minutes": 720,
     "is_active": true,
     "attribution_label": "Allen Memorial Art Museum",
-    "notes": "Oberlin College art museum — openings, gallery talks, tours. Uses single_page_extraction because many event links resolve to generic listing views.",
-    "adapter_config": {
-      "single_page_extraction": true,
-      "max_events_from_listing": 20
-    }
+    "notes": "Oberlin College art museum — openings, gallery talks, tours. Uses camoufox headless Firefox because the page is fully JS-rendered; a.event elements contain title, date, description, and image inline.",
+    "adapter_config": {}
   },
   {
     "source_id": "city-of-oberlin",
@@ -106,14 +100,15 @@
     "listing_url": "https://www.favagallery.org/calendar",
     "api_base_url": null,
     "ics_url": null,
-    "adapter_key": "openai_listing_v1",
+    "adapter_key": "fava_v1",
     "poll_interval_minutes": 720,
     "is_active": true,
     "attribution_label": "FAVA",
-    "notes": "Visual arts organization — exhibitions, workshops, artist talks. Uses single_page_extraction: calendar widget page, events shown inline without deep sub-pages.",
+    "notes": "Visual arts organization — exhibitions, workshops, artist talks. Uses cheerio HTML scrape for candidates; agentDetail visits each event detail page for full description and image.",
     "adapter_config": {
-      "single_page_extraction": true,
-      "max_events_from_listing": 25
+      "max_detail_extractions": 25,
+      "extract_event_details": true,
+      "allowed_hosts": ["favagallery.org", "www.favagallery.org"]
     }
   },
   {
@@ -132,24 +127,6 @@
     "adapter_config": {
       "single_page_extraction": true,
       "max_events_from_listing": 20
-    }
-  },
-  {
-    "source_id": "oberlin-business-partnership",
-    "source_name": "Oberlin Business Partnership",
-    "source_domain": "oberlinbusinesspartnership.com",
-    "source_type": "browser",
-    "listing_url": "https://www.oberlinbusinesspartnership.com/",
-    "api_base_url": null,
-    "ics_url": null,
-    "adapter_key": "openai_listing_v1",
-    "poll_interval_minutes": 720,
-    "is_active": true,
-    "attribution_label": "Oberlin Business Partnership",
-    "notes": "Local business chamber — networking events, markets. Uses single_page_extraction: listing_url is the homepage which shows events inline.",
-    "adapter_config": {
-      "single_page_extraction": true,
-      "max_events_from_listing": 15
     }
   },
   {

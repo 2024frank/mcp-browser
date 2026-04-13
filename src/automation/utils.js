@@ -4,6 +4,18 @@ export function nowIso() {
   return new Date().toISOString();
 }
 
+/** True if parsed start time is strictly before (now - graceMs). Invalid/missing dates → false. */
+export function isEventStartInPast(startDatetimeIso, graceMs = 0) {
+  if (!startDatetimeIso || String(startDatetimeIso).trim() === "") {
+    return false;
+  }
+  const t = new Date(startDatetimeIso).getTime();
+  if (Number.isNaN(t)) {
+    return false;
+  }
+  return t < Date.now() - Math.max(0, Number(graceMs) || 0);
+}
+
 export function addMinutes(isoString, minutes) {
   return new Date(new Date(isoString).getTime() + minutes * 60_000).toISOString();
 }
@@ -79,6 +91,31 @@ export function normalizeUrl(url, baseUrl) {
 
   try {
     return new URL(url, baseUrl).toString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Stable form for comparing event URLs across sources and the hub mirror (trailing slashes,
+ * hostname case). Does not change path case (servers may be case-sensitive).
+ */
+export function normalizeCanonicalEventUrl(url) {
+  if (!url || typeof url !== "string") {
+    return null;
+  }
+  const trimmed = url.trim();
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return null;
+  }
+  try {
+    const u = new URL(trimmed);
+    u.hostname = u.hostname.toLowerCase();
+    if (u.pathname.length > 1 && u.pathname.endsWith("/")) {
+      u.pathname = u.pathname.slice(0, -1);
+    }
+    u.hash = "";
+    return u.toString();
   } catch {
     return null;
   }

@@ -1,3 +1,8 @@
+/**
+ * Listing / ingest adapter — Localist API (adapter: localist_v1)
+ * -------------------------------------------------------------
+ * Structured campus/community calendar API → candidates or staged-shaped rows.
+ */
 import { mapNormalizedEventToCommunityHub } from "../community-hub.js";
 import {
   firstNonEmpty,

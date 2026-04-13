@@ -97,7 +97,9 @@ const runtimeConfig = {
   openaiDedupeContextLimit: 10,
   openaiDedupeMinConfidence: 0.75,
   detailExtractionDelayMs: 500,   // fast for testing
-  communityHubCalendarUrl: process.env.COMMUNITY_HUB_CALENDAR_URL || "https://environmentaldashboard.org/calendar?show-menu-bar=1",
+  communityHubCalendarUrl:
+    process.env.COMMUNITY_HUB_CALENDAR_URL ||
+    "https://environmentaldashboard.org/calendar/?show-menu-bar=1",
   communityHubSnapshotMaxEvents: 50,
   communityHubSnapshotModel: process.env.COMMUNITY_HUB_SNAPSHOT_MODEL || "gpt-4.1-mini"
 };

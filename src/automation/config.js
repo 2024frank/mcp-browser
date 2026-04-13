@@ -41,14 +41,51 @@ export const config = {
   userAgent:
     process.env.HTTP_USER_AGENT ||
     "oberlin-unified-calendar/0.1 (+https://environmentaldashboard.org/calendar)",
-  openaiDedupeEnabled: toBool(process.env.OPENAI_DEDUPE_ENABLED, false),
+  /** Default on so dedupe vs hub mirror is useful; set OPENAI_DEDUPE_ENABLED=false to skip LLM compare costs. */
+  openaiDedupeEnabled: toBool(process.env.OPENAI_DEDUPE_ENABLED, true),
   openaiDedupeModel: process.env.OPENAI_DEDUPE_MODEL || "",
   openaiDedupeContextLimit: Number(process.env.OPENAI_DEDUPE_CONTEXT_LIMIT || 50),
   openaiDedupeMinConfidence: Number(process.env.OPENAI_DEDUPE_MIN_CONFIDENCE || 0.75),
   detailExtractionDelayMs: Number(process.env.DETAIL_EXTRACTION_DELAY_MS || 1500),
   communityHubCalendarUrl:
     process.env.COMMUNITY_HUB_CALENDAR_URL ||
-    "https://environmentaldashboard.org/calendar?show-menu-bar=1",
+    "https://environmentaldashboard.org/calendar/?show-menu-bar=1",
+  /**
+   * Community Hub legacy JSON list (approved + future posts). Default: Oberlin tenant.
+   * Set to empty string to disable and fall back to browser snapshot only.
+   */
+  communityHubLegacyPostsUrl: (() => {
+    const v = process.env.COMMUNITY_HUB_LEGACY_POSTS_URL;
+    if (v === "") {
+      return null;
+    }
+    if (v != null && String(v).trim()) {
+      return String(v).trim();
+    }
+    return "https://oberlin.communityhub.cloud/api/legacy/calendar/posts?approved=1&filter=future";
+  })(),
+  /** Public permalink base for /calendar/post/:id (used when mirroring legacy API rows). */
+  communityHubPublicPostBase:
+    (process.env.COMMUNITY_HUB_PUBLIC_POST_BASE || "").trim() ||
+    "https://environmentaldashboard.org/calendar/post",
   communityHubSnapshotMaxEvents: Number(process.env.COMMUNITY_HUB_SNAPSHOT_MAX_EVENTS || 200),
-  communityHubSnapshotModel: process.env.COMMUNITY_HUB_SNAPSHOT_MODEL || ""
+  communityHubSnapshotModel: process.env.COMMUNITY_HUB_SNAPSHOT_MODEL || "",
+  /** Pilot: exclude events whose start is already in the past from human review (still stored for audit). */
+  skipPastEventsForPipeline: toBool(process.env.SKIP_PAST_EVENTS, true),
+  /** Hours of grace after nominal start (e.g. multi-day);0 = strict. */
+  pastEventGraceHours: Number(process.env.PAST_EVENT_GRACE_HOURS || 0),
+  /**
+   * Day-of-week for Community Hub mirror sync (0=Sunday … 5=Friday … 6=Saturday).
+   * When set, syncHubIfStale fires at most once per calendar day, only on that weekday
+   * (local server time, America/New_York assumed on Render).
+   * Leave unset (default) to fall back to interval-based HUB_SYNC_INTERVAL_MS throttle.
+   */
+  communityHubSyncDayOfWeek: (() => {
+    const v = process.env.HUB_SYNC_DAY_OF_WEEK;
+    if (v == null || v === "") return null;
+    const n = Number(v);
+    return Number.isInteger(n) && n >= 0 && n <= 6 ? n : null;
+  })(),
+  /** Optional label appended to source_runs.summary for experiment tracking. */
+  researchExperimentId: (process.env.RESEARCH_EXPERIMENT_ID || "").trim() || null
 };

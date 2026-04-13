@@ -495,7 +495,7 @@
     <div class="pipe-step">
       <div class="pipe-icon pipe-icon-5" id="pipeStep5">L5</div>
       <div class="pipe-label">Human Review</div>
-      <div class="pipe-sub">Community Hub</div>
+      <div class="pipe-sub">Vet, then hub form</div>
       <div class="pipe-stat" id="pipeStat5">—</div>
     </div>
   </div>
@@ -634,6 +634,10 @@
       <div style="margin-top:14px">
         <div class="trend-title">Failure Groups</div>
         <div id="failureGroups"></div>
+      </div>
+      <div style="margin-top:18px">
+        <div class="trend-title">Learning Feedback by Agent</div>
+        <div id="learningFeedback"></div>
       </div>
     </div>
   </div>
@@ -1010,6 +1014,8 @@ const ACT_ICONS = {
   detail_start:    "DET", detail_done:    "OK", detail_error:     "ERR",
   hyperlocal_start:"TAG", hyperlocal_done:"OK", hyperlocal_error:"ERR",
   dedupe_start:    "DED", dedupe_done:    "OK", dedupe_error:     "ERR",
+  qa_fail:         "QA",  qa_repaired:    "FIX", qa_reject:       "QXR",
+  research_skip_past: "PST",
   source_done:     "DONE", source_error:   "FAIL",
   watch_start:     "CHK",  watch_none:     "IDLE",
   watch_new_found: "NEW",  watch_done:     "DONE", watch_error: "ERR"
@@ -1052,6 +1058,10 @@ function renderActivity(entries) {
       case "watch_new_found":  body = `<span class="act-src">${esc(a.source)}</span> — <strong style="color:var(--success)">${a.new_count} new</strong> of ${a.total} found`; break;
       case "watch_done":       body = `<span class="act-src">${esc(a.source)}</span> — extracted <strong>${a.extracted}</strong> new event${a.extracted === 1 ? "" : "s"}`; break;
       case "watch_error":      body = `<span class="act-src">${esc(a.source)}</span> watch <span style="color:var(--danger)">error: ${esc(a.error)}</span>`; break;
+      case "qa_fail":          body = `QA issues (${a.issues || "?"}): <span class="act-title">${esc(a.title)}</span>`; break;
+      case "qa_repaired":      body = `QA repaired: <span class="act-title">${esc(a.title)}</span>`; break;
+      case "qa_reject":        body = `QA rejected (${a.issues || "?"} issues): <span class="act-title">${esc(a.title)}</span>`; break;
+      case "research_skip_past": body = `Past event skipped (pilot): <span class="act-title">${esc(a.title)}</span> — ${esc(a.start || "")}`; break;
       default:                 body = esc(JSON.stringify(a));
     }
     return `<div class="act-row"><span class="act-ts">${time}</span><span class="act-icon">${icon}</span><span class="act-body">${body}</span></div>`;
@@ -1237,6 +1247,11 @@ function buildCard(ev) {
 function buildBody(ev, p, isDup) {
   const geo  = ev.geographic_tags || [];
   const cats = p.event_type_categories || ev.event_type_categories || [];
+  const qaStatus = ev?.extraction_metadata?.qa_status || "unknown";
+  const qaIssues = Array.isArray(ev?.extraction_metadata?.qa_issues) ? ev.extraction_metadata.qa_issues : [];
+  const qaSummary = qaIssues.length
+    ? qaIssues.map((issue) => issue.message || issue.code || "Unknown issue").join("; ")
+    : "No QA issues recorded";
 
   return `
     ${isDup ? `<div class="dup-notice">
@@ -1312,7 +1327,17 @@ function buildBody(ev, p, isDup) {
       </div>
     </div>
 
-    <!-- 6. Source attribution -->
+    <!-- 6. QA validation -->
+    <div class="fsection">
+      <div class="fsection-title">Quality Gate</div>
+      <div class="fgrid">
+        ${f("QA Status", qaStatus)}
+        ${f("Completeness Score", ev?.extraction_metadata?.completeness_score ?? null)}
+        ${ftall("QA Issues", qaSummary)}
+      </div>
+    </div>
+
+    <!-- 7. Source attribution -->
     <div class="fsection">
       <div class="fsection-title">Source Attribution</div>
       <div class="fgrid">
@@ -1939,6 +1964,7 @@ function failureActionForReason(reasonCode) {
 function renderHistoryAndFailures(metrics) {
   const history = metrics?.history?.by_day || [];
   const failures = metrics?.failures?.groups || [];
+  const learningFeedback = metrics?.learning_feedback?.by_agent || [];
   const exactValues = history.map((row) => ({ day: row.day, value: Number(row.exact_match_rate || 0) }));
   const failedRunValues = history.map((row) => ({ day: row.day, value: Number(row.failed_runs || 0) }));
 
@@ -1967,6 +1993,26 @@ function renderHistoryAndFailures(metrics) {
           <div class="failure-note">${esc(group.reason || "")}</div>
           <div class="failure-note"><strong>Action:</strong> ${esc(failureActionForReason(group.reason_code))}</div>
           <div class="failure-sources">Sources: ${esc(sources || "None listed")}</div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  const learningNode = document.getElementById("learningFeedback");
+  if (!learningFeedback.length) {
+    learningNode.innerHTML = '<div style="font-size:12px;color:var(--muted)">No reviewer feedback patterns recorded yet.</div>';
+  } else {
+    learningNode.innerHTML = learningFeedback.map((agentGroup) => {
+      const reasons = (agentGroup.top_reasons || [])
+        .map((reason) => `<div class="failure-note">- ${esc(reason.rejection_reason)} (${reason.count})</div>`)
+        .join("");
+      return `
+        <div class="failure-row">
+          <div class="failure-head">
+            <span>${esc(agentGroup.fault_agent)}</span>
+            <span style="color:var(--muted)">Top repeated reasons</span>
+          </div>
+          ${reasons || '<div class="failure-note">No reasons recorded.</div>'}
         </div>
       `;
     }).join("");
@@ -2282,7 +2328,7 @@ function applyEnvWarnings(env) {
     syncBtn.style.opacity = "0.45";
     syncBtn.style.cursor  = "help";
   } else {
-    syncBtn.title  = "Sync Community Hub calendar into dedup memory";
+    syncBtn.title  = "Refresh local hub mirror from the public calendar page (browser snapshot — no Hub read API)";
     syncBtn.style.opacity = "";
     syncBtn.style.cursor  = "";
   }

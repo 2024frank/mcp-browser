@@ -1,3 +1,9 @@
+/**
+ * Listing collector — local Playwright + Cheerio (adapter: browser_listing_v1)
+ * -----------------------------------------------------------------------------
+ * Fetches listing HTML in-process, parses links matching source URL patterns,
+ * returns event candidates. No OpenAI; fault_agent for review issues: listing_agent.
+ */
 import * as cheerio from "cheerio";
 import { chromium } from "playwright";
 

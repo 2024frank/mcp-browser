@@ -9,11 +9,19 @@
     "start:browser": "npx playwright install chromium && npx @playwright/mcp --config playwright-mcp.config.json --port $PORT --host 0.0.0.0 --allowed-hosts '*'",
     "start:automation": "node src/automation/server.js",
     "test:smoke": "node scripts/test-automation-smoke.mjs",
-    "test:accuracy": "node scripts/test-accuracy-monitoring.mjs"
+    "test:accuracy": "node scripts/test-accuracy-monitoring.mjs",
+    "test:hub-legacy": "node scripts/test-hub-legacy-api.mjs",
+    "fetch:experience-oberlin": "node scripts/fetch-experience-oberlin-events.mjs",
+    "fetch:experience-oberlin-mcp": "node scripts/fetch-experience-oberlin-mcp.mjs",
+    "fetch:all-sources": "node scripts/fetch-all-sources.mjs",
+    "eval:pilot": "node scripts/run-pilot-evaluation.mjs",
+    "research:snapshot": "node scripts/print-research-snapshot.mjs",
+    "backfill:canonical": "node scripts/backfill-canonical-urls.mjs"
   },
   "dependencies": {
     "@playwright/mcp": "^0.0.70",
     "better-sqlite3": "^12.8.0",
+    "camoufox-js": "^0.9.3",
     "cheerio": "^1.2.0",
     "express": "^5.2.1",
     "node-ical": "^0.26.0",

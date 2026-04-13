@@ -40,13 +40,15 @@ services:
       - key: OPENAI_POSTER_MODEL
         value: gpt-4o
       - key: COMMUNITY_HUB_CALENDAR_URL
-        value: https://environmentaldashboard.org/calendar?show-menu-bar=1
+        value: https://environmentaldashboard.org/calendar/?show-menu-bar=1
       - key: COMMUNITY_HUB_SNAPSHOT_MODEL
         value: gpt-4.1-mini
       - key: COMMUNITY_HUB_SNAPSHOT_MAX_EVENTS
         value: "200"
+      - key: HUB_SYNC_DAY_OF_WEEK
+        value: "5"
       - key: HUB_SYNC_INTERVAL_MS
-        value: "14400000"
+        value: "604800000"
       - key: REQUEST_TIMEOUT_MS
         value: "30000"
       - key: DETAIL_EXTRACTION_DELAY_MS

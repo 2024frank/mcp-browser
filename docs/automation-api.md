@@ -9,6 +9,8 @@ The automation service exposes a small HTTP API for:
 - triggering manual syncs
 - inspecting candidates, staged events, and run history
 
+**Community Hub:** The Environmental Dashboard calendar does **not** provide a public “list all published events” REST API for this app to call. Endpoints under `/api/community-hub-events` read and write a **local SQLite mirror** of what we infer from the **public calendar web page** (browser snapshot). They are **not** proxies to an upstream Hub API.
+
 ## Health
 
 ```bash

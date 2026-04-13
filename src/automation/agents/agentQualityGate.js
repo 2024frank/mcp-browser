@@ -1,3 +1,10 @@
+/**
+ * Quality gate agent (automated validation, not a separate LLM)
+ * -------------------------------------------------------------
+ * Validates required fields and performs lightweight HTTP checks on source,
+ * event, and artwork URLs. Emits structured issues with fault_agent hints so
+ * failures can be logged to agent_feedback and/or trigger agentRepair.
+ */
 function hasValue(value) {
   return value !== null && value !== undefined && String(value).trim() !== "";
 }

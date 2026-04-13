@@ -1,3 +1,10 @@
+/**
+ * Listing collector — OpenAI + MCP variant (adapter: openai_listing_v1)
+ * ---------------------------------------------------------------------
+ * Navigates listing pages via Playwright MCP and returns event candidate URLs
+ * (fingerprints, title hints). Often paired with agentDetail for per-URL extraction.
+ * fault_agent for human review: listing_agent.
+ */
 import OpenAI from "openai";
 
 import {

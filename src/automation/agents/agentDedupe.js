@@ -1,6 +1,34 @@
 import OpenAI from "openai";
 
-import { parseModelJsonOutput } from "../utils.js";
+import { parseModelJsonOutput, truncateText } from "../utils.js";
+
+const DEDUPE_SHORT_DESC_MAX = 520;
+const DEDUPE_EXT_DESC_MAX = 1600;
+
+function clipForDedupe(value, maxLen) {
+  if (value == null) {
+    return null;
+  }
+  const s = String(value).replace(/\s+/g, " ").trim();
+  if (!s) {
+    return null;
+  }
+  return truncateText(s, maxLen);
+}
+
+export function dedupeDescriptionBundle(row) {
+  const hub = row.community_hub_payload || {};
+  return {
+    short_description: clipForDedupe(
+      row.short_description ?? hub.short_description_for_digital_signs,
+      DEDUPE_SHORT_DESC_MAX
+    ),
+    extended_description: clipForDedupe(
+      row.extended_description ?? hub.extended_description_for_web_and_newsletter,
+      DEDUPE_EXT_DESC_MAX
+    )
+  };
+}
 
 /**
  * Build compact context for duplicate comparison (no browser / no MCP).
@@ -16,7 +44,8 @@ export function buildDedupeContext(repository, currentSourceId, limit = 50) {
       end_datetime: r.end_datetime,
       location_or_address: r.location_or_address,
       source_event_url: r.source_event_url,
-      source_name: r.source_name
+      source_name: r.source_name,
+      ...dedupeDescriptionBundle(r)
     }));
 
   const hub = repository.listHubEvents(limit).map((r) => ({
@@ -25,7 +54,9 @@ export function buildDedupeContext(repository, currentSourceId, limit = 50) {
     end_datetime: r.end_datetime,
     location_or_address: r.location_or_address,
     source_event_url: r.source_event_url,
-    community_hub_url: r.community_hub_url
+    community_hub_url: r.community_hub_url,
+    short_description: clipForDedupe(r.short_description, DEDUPE_SHORT_DESC_MAX),
+    extended_description: clipForDedupe(r.extended_description, DEDUPE_EXT_DESC_MAX)
   }));
 
   return { staging, hub };
@@ -62,7 +93,8 @@ export async function runDuplicateCompareAgent(incomingEvent, context, runtimeCo
     location_or_address: incomingEvent.location_or_address,
     source_event_url: incomingEvent.source_event_url,
     source_name: incomingEvent.source_name,
-    organizational_sponsor: incomingEvent.organizational_sponsor
+    organizational_sponsor: incomingEvent.organizational_sponsor,
+    ...dedupeDescriptionBundle(incomingEvent)
   };
 
   const feedbackSection = feedbackGuidance.length
@@ -70,8 +102,11 @@ export async function runDuplicateCompareAgent(incomingEvent, context, runtimeCo
     : "";
   const input = `You are a duplicate-detection agent for community calendar events.
 
+Context: published_hub rows are a local mirror of the public Environmental Dashboard calendar (pages like https://environmentaldashboard.org/calendar/ and per-event URLs such as https://environmentaldashboard.org/calendar/post/3891?show-menu-bar=1). Descriptions in published_hub were copied from that site when available.
+
 Rules:
 - Mark is_duplicate true ONLY if the incoming event is almost certainly the SAME real-world occurrence as one existing row (same event, not just same day or same venue).
+- When BOTH sides include short_description or extended_description, use them: overlapping factual narrative (same program, timing hints, venue, sponsors) strongly supports a duplicate; clear contradictions mean NOT a duplicate.
 - Same title with different dates = usually NOT duplicate.
 - Different URLs can still be duplicates if clearly the same event cross-posted.
 - When is_duplicate is true, duplicate_match_url MUST be the source_event_url OR community_hub_url of the matching existing row you chose (copy exactly from context).
