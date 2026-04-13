@@ -54,12 +54,10 @@
     "poll_interval_minutes": 720,
     "is_active": true,
     "attribution_label": "Oberlin Heritage Center",
-    "notes": "Heritage Society events — tours, lectures, and historical programs.",
+    "notes": "Heritage Society events — tours, lectures, and historical programs. Uses single_page_extraction because the site mixes news + events without deep event URLs.",
     "adapter_config": {
-      "max_links": 20,
-      "max_detail_extractions": 10,
-      "extract_event_details": true,
-      "allowed_hosts": ["oberlinheritagecenter.org", "www.oberlinheritagecenter.org"]
+      "single_page_extraction": true,
+      "max_events_from_listing": 20
     }
   },
   {
@@ -114,12 +112,10 @@
     "poll_interval_minutes": 720,
     "is_active": true,
     "attribution_label": "FAVA",
-    "notes": "Visual arts organization — exhibitions, workshops, artist talks, and community events.",
+    "notes": "Visual arts organization — exhibitions, workshops, artist talks. Uses single_page_extraction: calendar widget page, events shown inline without deep sub-pages.",
     "adapter_config": {
-      "max_links": 20,
-      "max_detail_extractions": 10,
-      "extract_event_details": true,
-      "allowed_hosts": ["favagallery.org", "www.favagallery.org"]
+      "single_page_extraction": true,
+      "max_events_from_listing": 25
     }
   },
   {
@@ -154,12 +150,10 @@
     "poll_interval_minutes": 720,
     "is_active": true,
     "attribution_label": "Oberlin Business Partnership",
-    "notes": "Local business chamber — networking events, markets, and community business events.",
+    "notes": "Local business chamber — networking events, markets. Uses single_page_extraction: listing_url is the homepage which shows events inline.",
     "adapter_config": {
-      "max_links": 20,
-      "max_detail_extractions": 10,
-      "extract_event_details": true,
-      "allowed_hosts": ["oberlinbusinesspartnership.com", "www.oberlinbusinesspartnership.com"]
+      "single_page_extraction": true,
+      "max_events_from_listing": 15
     }
   },
   {
@@ -174,12 +168,10 @@
     "poll_interval_minutes": 720,
     "is_active": true,
     "attribution_label": "Oberlin Public Library",
-    "notes": "Public library — story times, author talks, community programs. Check if they also publish an ICS feed (switch adapter_key to ics_v1 if so).",
+    "notes": "Public library — story times, author talks, community programs. Uses single_page_extraction: library calendar shows event summaries inline.",
     "adapter_config": {
-      "max_links": 20,
-      "max_detail_extractions": 10,
-      "extract_event_details": true,
-      "allowed_hosts": ["oberlinlibrary.org", "www.oberlinlibrary.org"]
+      "single_page_extraction": true,
+      "max_events_from_listing": 25
     }
   }
 ]

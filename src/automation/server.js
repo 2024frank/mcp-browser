@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { join } from "node:path";
 
 import express from "express";
@@ -39,7 +40,11 @@ app.get("/health", (_request, response) => {
   response.json({
     ok: true,
     now: nowIso(),
-    counts: repository.getSummaryCounts()
+    counts: repository.getSummaryCounts(),
+    env: {
+      openai_api_key: !!process.env.OPENAI_API_KEY?.trim(),
+      mcp_browser_url: !!(process.env.MCP_BROWSER_URL || process.env.PLAYWRIGHT_MCP_URL || "").trim()
+    }
   });
 });
 
@@ -78,6 +83,32 @@ app.post("/api/sources/:id/run", async (request, response) => {
     response.status(500).json({
       error: error.message
     });
+  }
+});
+
+/**
+ * POST /api/sources/:id/watch
+ * Incremental watch for one source — listing check + pipeline only for new URLs.
+ */
+app.post("/api/sources/:id/watch", async (request, response) => {
+  try {
+    const result = await automationService.processSourceIncremental(request.params.id);
+    response.json(result);
+  } catch (error) {
+    response.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/watch
+ * Trigger an incremental watch across all active sources.
+ */
+app.post("/api/watch", async (_request, response) => {
+  try {
+    const results = await automationService.watchAllSources();
+    response.json({ results });
+  } catch (error) {
+    response.status(500).json({ error: error.message });
   }
 });
 
@@ -234,7 +265,43 @@ app.post("/api/poster-extract", async (request, response) => {
   }
 });
 
+/**
+ * POST /api/sources/apply-seed
+ * Force-sync sources from sources.example.json into the DB — updates existing rows,
+ * inserts new ones. Use this after editing the seed file to propagate changes.
+ */
+app.post("/api/sources/apply-seed", (_request, response) => {
+  try {
+    const raw = fs.readFileSync(config.seedSourcesPath, "utf8");
+    const seedSources = JSON.parse(raw);
+    const result = repository.applySeedSources(seedSources);
+    response.json({ ok: true, ...result, total: seedSources.length });
+  } catch (err) {
+    response.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/metrics
+ * Per-agent pipeline metrics: candidates, staging, scope distribution, dedup & approval rates.
+ */
+app.get("/api/metrics", (_request, response) => {
+  response.json(repository.getAgentMetrics());
+});
+
 app.post("/api/community-hub-events/sync-browser", async (request, response) => {
+  if (!process.env.OPENAI_API_KEY?.trim()) {
+    response.status(503).json({
+      error: "OPENAI_API_KEY is not set on this service. Add it in the Render dashboard → Environment → OPENAI_API_KEY."
+    });
+    return;
+  }
+  if (!(process.env.MCP_BROWSER_URL || process.env.PLAYWRIGHT_MCP_URL || "").trim()) {
+    response.status(503).json({
+      error: "MCP_BROWSER_URL is not set on this service. Add it in the Render dashboard → Environment → MCP_BROWSER_URL."
+    });
+    return;
+  }
   try {
     const body = request.body || {};
     const calendarUrl = body.calendar_url || config.communityHubCalendarUrl;
@@ -244,9 +311,7 @@ app.post("/api/community-hub-events/sync-browser", async (request, response) => 
     });
     response.json(result);
   } catch (error) {
-    response.status(500).json({
-      error: error.message
-    });
+    response.status(500).json({ error: error.message });
   }
 });
 

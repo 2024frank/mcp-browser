@@ -1,7 +1,27 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { toBool } from "./utils.js";
+
+// ── Load .env from project root (dev convenience; no-op in prod if file absent) ──
+try {
+  const __dir  = path.dirname(fileURLToPath(import.meta.url));
+  const envFile = path.join(__dir, "../../.env");
+  if (fs.existsSync(envFile)) {
+    for (const line of fs.readFileSync(envFile, "utf8").split("\n")) {
+      const t = line.trim();
+      if (!t || t.startsWith("#")) continue;
+      const eq = t.indexOf("=");
+      if (eq < 1) continue;
+      const k = t.slice(0, eq).trim();
+      const v = t.slice(eq + 1).trim().replace(/^['"]|['"]$/g, "");
+      if (!process.env[k]) process.env[k] = v; // never overwrite real env vars
+    }
+  }
+} catch {
+  // Silently ignore — .env is optional
+}
 
 const defaultDataDir = path.resolve(process.cwd(), "data/runtime");
 const dataDir = process.env.DATA_DIR || defaultDataDir;

@@ -279,6 +279,21 @@
     .extract-result-meta  { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
 
     /* ── Research metrics ─────────────────────────────────── */
+    /* ── Agent grade cards ────────────────────────────────────────────────── */
+    .agent-grades { display: grid; grid-template-columns: repeat(5,1fr); gap: 14px; margin-bottom: 18px; }
+    @media(max-width:900px){ .agent-grades { grid-template-columns: repeat(2,1fr); } }
+    .grade-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; position:relative; }
+    .grade-label { font-size: 11px; font-weight: 700; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:6px; }
+    .grade-stat  { font-size: 22px; font-weight: 800; color:var(--text); margin: 4px 0 2px; line-height:1; }
+    .grade-sub   { font-size: 11px; color:var(--muted); }
+    .grade-badge { position:absolute; top:10px; right:12px; font-size:28px; font-weight:900; }
+    .grade-A { color:#15803d; } .grade-B { color:#0369a1; } .grade-C { color:#b45309; }
+    .grade-D { color:#b91c1c; } .grade-F { color:#7c3aed; }
+    .grade-bar-wrap { margin-top:8px; background:var(--bg); border-radius:100px; height:6px; overflow:hidden; }
+    .grade-bar { height:100%; border-radius:100px; transition:width .4s; }
+    .bar-green { background:#4ade80; } .bar-blue { background:#60a5fa; }
+    .bar-amber { background:#fbbf24; } .bar-red { background:#f87171; }
+
     .metrics-section { padding: 0 24px 40px; }
     .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-top: 14px; }
     .metric-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; box-shadow: var(--shadow); }
@@ -365,6 +380,7 @@
     <button class="btn btn-ghost btn-sm" onclick="exportCsv()">⬇ Export CSV</button>
     <button class="btn btn-ghost btn-sm" onclick="doRefresh()">Refresh</button>
     <button class="btn btn-ghost btn-sm" onclick="syncHub()" id="syncBtn">Sync Hub</button>
+    <button class="btn btn-ghost btn-sm" onclick="watchAll()" id="watchBtn">👁 Watch</button>
     <button class="btn btn-primary btn-sm" onclick="runAll()" id="runBtn">▶ Run Now</button>
   </div>
 </header>
@@ -477,6 +493,22 @@
   </main>
 
 </div><!-- /layout -->
+
+<!-- ═══ AGENT PERFORMANCE GRADES ════════════════════════════════════════════ -->
+<div class="metrics-section" id="agentGradesSection">
+  <div class="panel">
+    <div class="panel-head" style="align-items:center">
+      <h3>Agent Performance — Grades &amp; Throughput</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="ts" id="gradesUpdated"></span>
+        <button class="btn btn-outline btn-xs" onclick="applySeed()" id="applySeedBtn" title="Push sources.example.json config updates into the live DB">⟳ Apply Source Config</button>
+      </div>
+    </div>
+    <div style="padding:18px" id="agentGradesBody">
+      <div style="color:var(--muted);font-size:12px">Loading…</div>
+    </div>
+  </div>
+</div>
 
 <!-- ═══ RESEARCH METRICS ═════════════════════════════════════════════════════ -->
 <div class="metrics-section" id="metricsSection" style="display:none">
@@ -752,7 +784,8 @@ function renderSources(sources) {
         </div>
         <div class="source-actions">
           <button class="btn btn-outline btn-xs" onclick="openEditSource('${s.id}')" title="Edit source">✎</button>
-          <button class="btn btn-outline btn-xs" onclick="runSource('${s.id}')" title="Run now" ${!s.is_active ? "disabled" : ""}>▶</button>
+          <button class="btn btn-outline btn-xs" onclick="watchSource('${s.id}')" title="Watch for new events" ${!s.is_active ? "disabled" : ""}>👁</button>
+          <button class="btn btn-outline btn-xs" onclick="runSource('${s.id}')" title="Full run" ${!s.is_active ? "disabled" : ""}>▶</button>
         </div>
       </div>`;
   }).join("");
@@ -760,11 +793,13 @@ function renderSources(sources) {
 
 /* ── Agent Activity log ──────────────────────────────────────────────────── */
 const ACT_ICONS = {
-  source_start:    "🚀", listing_done: "🔍",
-  detail_start:    "⏳", detail_done:  "✅", detail_error:     "❌",
+  source_start:    "🚀", listing_done:   "🔍",
+  detail_start:    "⏳", detail_done:    "✅", detail_error:     "❌",
   hyperlocal_start:"📍", hyperlocal_done:"✅", hyperlocal_error:"❌",
-  dedupe_start:    "🔄", dedupe_done:  "✅", dedupe_error:     "❌",
-  source_done:     "🏁", source_error: "💥"
+  dedupe_start:    "🔄", dedupe_done:    "✅", dedupe_error:     "❌",
+  source_done:     "🏁", source_error:   "💥",
+  watch_start:     "👁",  watch_none:     "✓",
+  watch_new_found: "🆕",  watch_done:     "🏁", watch_error: "⚠️"
 };
 
 function renderActivity(entries) {
@@ -797,9 +832,14 @@ function renderActivity(entries) {
         ? `Duplicate: <span style="color:var(--warning)">${esc(a.title)}</span> — ${esc(a.reason)}`
         : `Unique: <span class="act-title">${esc(a.title)}</span>`; break;
       case "dedupe_error":  body = `Dedup error: <span style="color:var(--danger)">${esc(a.error)}</span>`; break;
-      case "source_done":   body = `<span class="act-src">${esc(a.source)}</span> done — <strong>${a.upserted_events}</strong> staged`; break;
-      case "source_error":  body = `<span class="act-src">${esc(a.source)}</span> <span style="color:var(--danger)">failed: ${esc(a.error)}</span>`; break;
-      default:              body = esc(JSON.stringify(a));
+      case "source_done":      body = `<span class="act-src">${esc(a.source)}</span> done — <strong>${a.upserted_events}</strong> staged`; break;
+      case "source_error":     body = `<span class="act-src">${esc(a.source)}</span> <span style="color:var(--danger)">failed: ${esc(a.error)}</span>`; break;
+      case "watch_start":      body = `<span class="act-src">${esc(a.source)}</span> — checking for new events`; break;
+      case "watch_none":       body = `<span class="act-src">${esc(a.source)}</span> — no new events (${a.checked} checked)`; break;
+      case "watch_new_found":  body = `<span class="act-src">${esc(a.source)}</span> — <strong style="color:var(--success)">${a.new_count} new</strong> of ${a.total} found`; break;
+      case "watch_done":       body = `<span class="act-src">${esc(a.source)}</span> — extracted <strong>${a.extracted}</strong> new event${a.extracted === 1 ? "" : "s"}`; break;
+      case "watch_error":      body = `<span class="act-src">${esc(a.source)}</span> watch <span style="color:var(--danger)">error: ${esc(a.error)}</span>`; break;
+      default:                 body = esc(JSON.stringify(a));
     }
     return `<div class="act-row"><span class="act-ts">${time}</span><span class="act-icon">${icon}</span><span class="act-body">${body}</span></div>`;
   }).join("");
@@ -1073,6 +1113,41 @@ async function runSource(id) {
   finally { setBusy(false); }
 }
 
+async function watchSource(id) {
+  toast("Checking source for new events…", "inf");
+  setBusy(true);
+  try {
+    const r = await apiFetch("/api/sources/" + id + "/watch", { method: "POST" });
+    if (r.status === "no_new_events") {
+      toast("No new events found (" + (r.checked || 0) + " checked)", "inf");
+    } else if (r.status === "new_events_extracted") {
+      toast("Found " + r.new_count + " new — " + r.extracted + " extracted", "ok");
+      await loadAll();
+    } else {
+      toast("Watch: " + (r.reason || r.status), "inf");
+    }
+  } catch (e) { toast("Watch failed: " + e.message, "err"); }
+  finally { setBusy(false); }
+}
+
+async function watchAll() {
+  toast("Watching all sources for new events…", "inf");
+  setBusy(true);
+  try {
+    const r = await apiFetch("/api/watch", { method: "POST" });
+    const results = r.results || [];
+    const newFound = results.reduce((s, x) => s + (x.new_count || 0), 0);
+    const extracted = results.reduce((s, x) => s + (x.extracted || 0), 0);
+    if (newFound > 0) {
+      toast("Watch done — " + newFound + " new URLs, " + extracted + " extracted", "ok");
+      await loadAll();
+    } else {
+      toast("Watch done — no new events across " + results.length + " sources", "inf");
+    }
+  } catch (e) { toast("Watch failed: " + e.message, "err"); }
+  finally { setBusy(false); }
+}
+
 async function runAll() {
   toast("Running all due sources…", "inf");
   setBusy(true);
@@ -1209,8 +1284,9 @@ async function saveEditEvent() {
 
 /* ── Utilities ───────────────────────────────────────────────────────────── */
 function setBusy(b) {
-  document.getElementById("runBtn").disabled  = b;
-  document.getElementById("syncBtn").disabled = b;
+  document.getElementById("runBtn").disabled   = b;
+  document.getElementById("syncBtn").disabled  = b;
+  document.getElementById("watchBtn").disabled = b;
 }
 
 function cp(text) {
@@ -1523,18 +1599,183 @@ function exportCsv() {
 }
 
 /* ── Boot ────────────────────────────────────────────────────────────────── */
+/* ── Agent performance grades ────────────────────────────────────────────── */
+function letterGrade(pct) {
+  if (pct >= 90) return "A";
+  if (pct >= 75) return "B";
+  if (pct >= 55) return "C";
+  if (pct >= 35) return "D";
+  return "F";
+}
+
+function renderAgentGrades(m) {
+  const a1 = m.agent1 || {};
+  const a2 = m.agent2 || {};
+  const a3 = m.agent3 || {};
+  const a4 = m.agent4 || {};
+  const a5 = m.agent5 || {};
+
+  const cands    = a1.total_candidates || 0;
+  const staged   = a2.total_staged     || 0;
+  const dupRate  = a4.duplicate_rate   || 0;
+  const appRate  = a5.approval_rate    || 0;
+
+  // Agent 2 yield: how many staged events per candidate collected
+  const a2Yield  = cands > 0 ? +(staged / cands * 100).toFixed(1) : 0;
+  // Agent 3: % of staged events that have a scope set
+  const scopes   = (a3.scope_distribution || []).reduce((s, x) => s + (x.cnt || 0), 0);
+  const a3Cov    = staged > 0 ? +(scopes / staged * 100).toFixed(1) : 0;
+  // Agent 4: dedup completeness (% of staged that have is_duplicate set — not null)
+  const a4Grade  = dupRate !== undefined ? letterGrade(100 - dupRate) : "?"; // high dup = low grade
+  // Agent 5: approval pipeline grade
+  const a5Grade  = letterGrade(appRate);
+
+  const scopeRows = (a3.scope_distribution || [])
+    .sort((a, b) => b.cnt - a.cnt)
+    .slice(0, 6)
+    .map(x => {
+      const pct = staged > 0 ? (x.cnt / staged * 100).toFixed(0) : 0;
+      return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;font-size:11px">
+        <span style="min-width:90px;color:var(--muted)">${esc(x.hyperlocal_scope || "unknown")}</span>
+        <div style="flex:1;background:var(--bg);border-radius:100px;height:5px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:var(--primary);border-radius:100px"></div>
+        </div>
+        <span style="font-weight:700;min-width:24px;text-align:right">${x.cnt}</span>
+      </div>`;
+    }).join("");
+
+  document.getElementById("agentGradesBody").innerHTML = `
+    <div class="agent-grades">
+      <div class="grade-card">
+        <div class="grade-label">🌐 Agent 1 — Listing</div>
+        <div class="grade-stat">${cands.toLocaleString()}</div>
+        <div class="grade-sub">event URLs discovered</div>
+        <div class="grade-bar-wrap"><div class="grade-bar bar-blue" style="width:${Math.min(cands/5,100)}%"></div></div>
+        <span class="grade-badge grade-${cands>0?"A":"F"}">${cands>0?"A":"F"}</span>
+      </div>
+      <div class="grade-card">
+        <div class="grade-label">🔍 Agent 2 — Detail Extractor</div>
+        <div class="grade-stat">${staged.toLocaleString()}</div>
+        <div class="grade-sub">${a2Yield}% yield from candidates</div>
+        <div class="grade-bar-wrap"><div class="grade-bar bar-green" style="width:${a2Yield}%"></div></div>
+        <span class="grade-badge grade-${letterGrade(a2Yield)}">${letterGrade(a2Yield)}</span>
+      </div>
+      <div class="grade-card">
+        <div class="grade-label">📍 Agent 3 — Hyperlocal Tagger</div>
+        <div class="grade-stat">${a3Cov}%</div>
+        <div class="grade-sub">events tagged with scope</div>
+        ${scopeRows ? `<div style="margin-top:8px">${scopeRows}</div>` : ""}
+        <span class="grade-badge grade-${letterGrade(a3Cov)}">${letterGrade(a3Cov)}</span>
+      </div>
+      <div class="grade-card">
+        <div class="grade-label">🔄 Agent 4 — Dedup</div>
+        <div class="grade-stat">${(a4.total_duplicates||0).toLocaleString()}</div>
+        <div class="grade-sub">${dupRate}% duplicate rate</div>
+        <div class="grade-bar-wrap"><div class="grade-bar bar-amber" style="width:${dupRate}%"></div></div>
+        <span class="grade-badge grade-${dupRate<10?"A":dupRate<25?"B":dupRate<45?"C":"D"}">${dupRate<10?"A":dupRate<25?"B":dupRate<45?"C":"D"}</span>
+      </div>
+      <div class="grade-card">
+        <div class="grade-label">✅ Agent 5 — Human Review</div>
+        <div class="grade-stat">${(a5.total_approved||0).toLocaleString()}</div>
+        <div class="grade-sub">${appRate}% submitted · ${(a5.total_pending||0)} pending</div>
+        <div class="grade-bar-wrap"><div class="grade-bar bar-green" style="width:${appRate}%"></div></div>
+        <span class="grade-badge grade-${a5Grade}">${a5Grade}</span>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--muted)">
+      Grade scale: <strong>A</strong> ≥90% · <strong>B</strong> ≥75% · <strong>C</strong> ≥55% · <strong>D</strong> ≥35% · <strong>F</strong> &lt;35%
+      &nbsp;·&nbsp; For Agent 4, lower duplicate rate = higher grade.
+      &nbsp;·&nbsp; Updated ${new Date().toLocaleTimeString()}
+    </div>`;
+  document.getElementById("gradesUpdated").textContent = "as of " + new Date().toLocaleTimeString();
+}
+
+async function applySeed() {
+  const btn = document.getElementById("applySeedBtn");
+  btn.disabled = true;
+  btn.textContent = "Applying…";
+  try {
+    const r = await apiFetch("/api/sources/apply-seed", { method: "POST" });
+    toast(`Source config applied — ${r.inserted} inserted, ${r.updated} updated`, "ok");
+    await loadAll();
+  } catch (e) {
+    toast("Apply seed failed: " + e.message, "err");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "⟳ Apply Source Config";
+  }
+}
+
+/* ── Env config warnings ─────────────────────────────────────────────────── */
+function applyEnvWarnings(env) {
+  const syncBtn  = document.getElementById("syncBtn");
+  const watchBtn = document.getElementById("watchBtn");
+  const runBtn   = document.getElementById("runBtn");
+
+  const hasKey = env.openai_api_key;
+  const hasMcp = env.mcp_browser_url;
+
+  // Sync Hub requires both keys
+  if (!hasKey || !hasMcp) {
+    syncBtn.title = !hasKey
+      ? "OPENAI_API_KEY not set — add it in Render → Environment"
+      : "MCP_BROWSER_URL not set — add it in Render → Environment";
+    syncBtn.style.opacity = "0.45";
+    syncBtn.style.cursor  = "help";
+  } else {
+    syncBtn.title  = "Sync Community Hub calendar into dedup memory";
+    syncBtn.style.opacity = "";
+    syncBtn.style.cursor  = "";
+  }
+
+  // Watch / Run require both keys for AI sources
+  const aiWarning = !hasKey
+    ? "OPENAI_API_KEY not set on Render"
+    : !hasMcp ? "MCP_BROWSER_URL not set on Render" : "";
+  if (aiWarning) {
+    [watchBtn, runBtn].forEach(b => {
+      if (!b) return;
+      b.title = aiWarning + " — AI agents will fail for browser sources";
+      b.style.outline = "2px solid rgba(251,191,36,.7)";
+    });
+  } else {
+    [watchBtn, runBtn].forEach(b => {
+      if (!b) return;
+      b.title  = "";
+      b.style.outline = "";
+    });
+  }
+
+  // Show a one-time banner if keys are missing
+  const bannerId = "envBanner";
+  if (!document.getElementById(bannerId) && (!hasKey || !hasMcp)) {
+    const missing = [];
+    if (!hasKey) missing.push("OPENAI_API_KEY");
+    if (!hasMcp) missing.push("MCP_BROWSER_URL");
+    const banner = document.createElement("div");
+    banner.id = bannerId;
+    banner.style.cssText = "background:#7c3aed;color:#fff;font-size:12px;font-weight:600;padding:8px 24px;display:flex;align-items:center;gap:10px;";
+    banner.innerHTML = `⚠️ Missing env vars on this service: <strong>${missing.join(", ")}</strong>
+      &nbsp;— add them in <strong>Render → Environment</strong> then redeploy.
+      <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:1px solid rgba(255,255,255,.4);color:#fff;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:11px">Dismiss</button>`;
+    document.body.insertBefore(banner, document.body.firstChild);
+  }
+}
+
 async function loadAll() {
   try {
-    const [health, stagingRes, sourcesRes, runsRes, actRes] = await Promise.all([
+    const [health, stagingRes, sourcesRes, runsRes, actRes, metricsRes] = await Promise.all([
       apiFetch("/health"),
       apiFetch("/api/events-staging?limit=200"),
       apiFetch("/api/sources"),
       apiFetch("/api/source-runs?limit=12"),
-      apiFetch("/api/agent-activity")
+      apiFetch("/api/agent-activity"),
+      apiFetch("/api/metrics")
     ]);
 
     setOnline(true);
     renderStats(health, stagingRes);
+    applyEnvWarnings(health.env || {});
     allSources = sourcesRes.sources || [];
     renderSources(allSources);
     renderRuns(runsRes.runs || []);
@@ -1543,6 +1784,7 @@ async function loadAll() {
     allEvents = stagingRes.events_staging || [];
     renderQueue();
     renderMetrics(allEvents, allSources);
+    renderAgentGrades(metricsRes);
     renderPipeline(health, allEvents, activity);
     document.getElementById("tsLabel").textContent = "Updated " + new Date().toLocaleTimeString();
   } catch (e) {

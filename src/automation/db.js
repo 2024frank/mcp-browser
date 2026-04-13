@@ -413,6 +413,7 @@ export function createRepository(config) {
           updated_at = @updated_at
       WHERE id = @id
     `),
+    listFingerprintsForSource: db.prepare(`SELECT fingerprint FROM event_candidates WHERE source_id = ?`),
     countTable: (table) => db.prepare(`SELECT COUNT(*) AS count FROM ${table}`),
     getStagingById: db.prepare(`SELECT * FROM events_staging WHERE id = ?`),
     patchStagingReviewStatus: db.prepare(`
@@ -814,6 +815,48 @@ export function createRepository(config) {
       return inserted;
     },
 
+    /** Force-apply seed definitions: update existing sources, insert new ones. */
+    applySeedSources(seedSources) {
+      let inserted = 0, updated = 0;
+      for (const source of seedSources) {
+        const id = source.source_id || source.id;
+        if (!id) continue;
+        if (this.getSource(id)) {
+          this.updateSource(id, source);
+          updated += 1;
+        } else {
+          this.createSource(source);
+          inserted += 1;
+        }
+      }
+      return { inserted, updated };
+    },
+
+    /** Per-agent metrics computed from DB state. */
+    getAgentMetrics() {
+      const candidates = db.prepare(`SELECT source_id, COUNT(*) as cnt FROM event_candidates GROUP BY source_id`).all();
+      const staging    = db.prepare(`SELECT source_id, COUNT(*) as total,
+        SUM(CASE WHEN is_duplicate=1 THEN 1 ELSE 0 END) as duplicates,
+        SUM(CASE WHEN review_status='approved' THEN 1 ELSE 0 END) as approved,
+        SUM(CASE WHEN review_status='pending' AND (is_duplicate IS NULL OR is_duplicate=0) THEN 1 ELSE 0 END) as pending
+        FROM events_staging GROUP BY source_id`).all();
+      const scopes     = db.prepare(`SELECT hyperlocal_scope, COUNT(*) as cnt FROM events_staging WHERE hyperlocal_scope IS NOT NULL GROUP BY hyperlocal_scope`).all();
+      const totalCandidates = db.prepare(`SELECT COUNT(*) as n FROM event_candidates`).get().n;
+      const totalStaged     = db.prepare(`SELECT COUNT(*) as n FROM events_staging`).get().n;
+      const totalDups       = db.prepare(`SELECT COUNT(*) as n FROM events_staging WHERE is_duplicate=1`).get().n;
+      const totalApproved   = db.prepare(`SELECT COUNT(*) as n FROM events_staging WHERE review_status='approved'`).get().n;
+      const totalPending    = db.prepare(`SELECT COUNT(*) as n FROM events_staging WHERE review_status='pending' AND (is_duplicate IS NULL OR is_duplicate=0)`).get().n;
+      const recentRuns      = db.prepare(`SELECT source_id, status, new_candidates, upserted_events, started_at, finished_at FROM source_runs ORDER BY started_at DESC LIMIT 50`).all();
+      return {
+        agent1: { total_candidates: totalCandidates, by_source: candidates },
+        agent2: { total_staged: totalStaged, by_source: staging },
+        agent3: { scope_distribution: scopes },
+        agent4: { total_duplicates: totalDups, duplicate_rate: totalStaged > 0 ? +(totalDups / totalStaged * 100).toFixed(1) : 0 },
+        agent5: { total_approved: totalApproved, total_pending: totalPending, approval_rate: totalStaged > 0 ? +(totalApproved / totalStaged * 100).toFixed(1) : 0 },
+        recent_runs: recentRuns
+      };
+    },
+
     getStagingById(id) {
       const row = statements.getStagingById.get(id);
       return row ? stagingRowToObject(row) : null;
@@ -826,6 +869,11 @@ export function createRepository(config) {
         updated_at: nowIso()
       });
       return this.getStagingById(id);
+    },
+
+    getKnownFingerprints(sourceId) {
+      const rows = statements.listFingerprintsForSource.all(sourceId);
+      return new Set(rows.map(r => r.fingerprint));
     },
 
     patchStagingFields(id, fields) {
