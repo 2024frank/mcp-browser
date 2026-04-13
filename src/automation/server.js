@@ -307,6 +307,14 @@ app.get("/api/metrics", (_request, response) => {
   response.json(repository.getAgentMetrics());
 });
 
+app.get("/api/metrics/history", (_request, response) => {
+  const metrics = repository.getAgentMetrics();
+  response.json({
+    history: metrics.history || { days: 0, by_day: [] },
+    failures: metrics.failures || { groups: [] }
+  });
+});
+
 app.post("/api/community-hub-events/sync-browser", async (request, response) => {
   if (!process.env.OPENAI_API_KEY?.trim()) {
     response.status(503).json({

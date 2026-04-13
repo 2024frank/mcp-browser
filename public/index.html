@@ -68,6 +68,31 @@
     @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:.35; } }
 
     .ts { font-size: 12px; color: #64748b; }
+    .workspace-tabs {
+      display: flex;
+      gap: 8px;
+      padding: 10px 24px;
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 54px;
+      z-index: 150;
+    }
+    .wtab {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--muted);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .wtab.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
 
     /* ── Buttons ──────────────────────────────────────────── */
     .btn {
@@ -319,6 +344,20 @@
     .sb-bar { height: 100%; background: var(--primary); border-radius: 100px; transition: width .4s; }
     .sb-count { font-weight: 700; min-width: 28px; text-align: right; }
     .quality-note { margin-top: 12px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .trend-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+    .trend-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; background: #fff; }
+    .trend-title { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; }
+    .sparkline { display: flex; align-items: flex-end; gap: 4px; height: 120px; }
+    .spark-bar { flex: 1; background: #cbd5e1; border-radius: 4px 4px 0 0; min-height: 2px; }
+    .spark-bar.good { background: #22c55e; }
+    .spark-bar.warn { background: #f59e0b; }
+    .spark-bar.bad { background: #ef4444; }
+    .spark-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--muted); }
+    .failure-row { padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .failure-row:last-child { border-bottom: none; }
+    .failure-head { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 600; }
+    .failure-note { font-size: 12px; color: var(--muted); margin-top: 3px; }
+    .failure-sources { margin-top: 5px; font-size: 12px; color: var(--muted); }
 
     /* ── Pipeline banner ──────────────────────────────────── */
     .pipeline-section { padding: 16px 24px 2px; }
@@ -397,6 +436,12 @@
     <button class="btn btn-primary btn-sm" onclick="runAll()" id="runBtn">Run Now</button>
   </div>
 </header>
+<div class="workspace-tabs">
+  <button class="wtab active" data-ws="operations" onclick="setWorkspace('operations')">Operations</button>
+  <button class="wtab" data-ws="review" onclick="setWorkspace('review')">Review</button>
+  <button class="wtab" data-ws="failures" onclick="setWorkspace('failures')">Failures</button>
+  <button class="wtab" data-ws="research" onclick="setWorkspace('research')">Research</button>
+</div>
 
 <!-- ═══ STATS ════════════════════════════════════════════════════════════════ -->
 <div class="stats-row" id="statsRow">
@@ -547,6 +592,33 @@
       <div class="source-breakdown" id="sourceBreakdown"></div>
       <div class="source-breakdown" id="fieldAccuracyBreakdown"></div>
       <div class="quality-note" id="qualityNote"></div>
+    </div>
+  </div>
+</div>
+
+<div class="metrics-section" id="historySection" style="display:none">
+  <div class="panel">
+    <div class="panel-head">
+      <h3>Research Trends and Failure Triage</h3>
+      <span class="ts" id="historyUpdated"></span>
+    </div>
+    <div style="padding:18px">
+      <div class="trend-grid">
+        <div class="trend-card">
+          <div class="trend-title">Exact Match Rate Trend</div>
+          <div class="sparkline" id="exactMatchTrend"></div>
+          <div class="spark-labels"><span id="exactTrendStart">-</span><span id="exactTrendEnd">-</span></div>
+        </div>
+        <div class="trend-card">
+          <div class="trend-title">Run Failure Count Trend</div>
+          <div class="sparkline" id="runFailureTrend"></div>
+          <div class="spark-labels"><span id="failureTrendStart">-</span><span id="failureTrendEnd">-</span></div>
+        </div>
+      </div>
+      <div style="margin-top:14px">
+        <div class="trend-title">Failure Groups</div>
+        <div id="failureGroups"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -753,6 +825,7 @@ let openCards = new Set();
 let sourceHealthMap = {};
 let sourceFilter = "all";
 let queueSort = "updated_desc";
+let activeWorkspace = "operations";
 
 let editingSourceId = null;
 let editingEventId  = null;
@@ -856,6 +929,30 @@ function setSourceFilter(next) {
     el.classList.toggle("active", el.dataset.sf === next);
   });
   renderSources(allSources);
+}
+
+function setWorkspace(workspace) {
+  activeWorkspace = workspace;
+  document.querySelectorAll(".wtab").forEach((el) => {
+    el.classList.toggle("active", el.dataset.ws === workspace);
+  });
+
+  const showOps = workspace === "operations";
+  const showReview = workspace === "review";
+  const showFailures = workspace === "failures";
+  const showResearch = workspace === "research";
+
+  document.getElementById("statsRow").style.display = showOps ? "grid" : "none";
+  document.querySelector(".pipeline-section").style.display = showOps ? "block" : "none";
+  document.querySelector(".layout").style.display = (showOps || showReview || showFailures) ? "grid" : "none";
+  document.getElementById("agentGradesSection").style.display = showOps ? "block" : "none";
+  document.getElementById("metricsSection").style.display = showResearch ? "block" : "none";
+  document.getElementById("historySection").style.display = (showResearch || showFailures) ? "block" : "none";
+
+  const reviewPanel = document.querySelector("main");
+  if (reviewPanel) reviewPanel.style.display = (showReview || showOps) ? "block" : "none";
+  const sidebar = document.querySelector("aside");
+  if (sidebar) sidebar.style.display = (showFailures ? "block" : (showReview ? "none" : "block"));
 }
 
 /* ── Agent Activity log ──────────────────────────────────────────────────── */
@@ -1527,7 +1624,7 @@ function toast(msg, type = "inf") {
 /* ── Research metrics ────────────────────────────────────────────────────── */
 function renderMetrics(metrics) {
   const section = document.getElementById("metricsSection");
-  section.style.display = "block";
+  section.style.display = activeWorkspace === "research" ? "block" : "none";
   const accuracy = metrics?.accuracy || {};
   const pending = metrics?.agent5?.total_pending || 0;
   const reviewed = accuracy.total_reviewed || 0;
@@ -1627,6 +1724,73 @@ function renderMetrics(metrics) {
     : `Accuracy metrics will appear after reviewers edit, approve, reject, or rescue items from the duplicate queue.`;
 
   document.getElementById("metricsUpdated").textContent = "as of " + new Date().toLocaleTimeString();
+}
+
+function renderTrendBars(containerId, values, mode = "good-high") {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  if (!values.length) {
+    container.innerHTML = '<div style="font-size:12px;color:var(--muted)">No trend data yet.</div>';
+    return;
+  }
+  const max = Math.max(...values.map((v) => Number(v.value || 0)), 1);
+  container.innerHTML = values.map((entry) => {
+    const pct = Math.max(2, Math.round((Number(entry.value || 0) / max) * 100));
+    const cls = mode === "good-high"
+      ? (entry.value >= 70 ? "good" : entry.value >= 40 ? "warn" : "bad")
+      : (entry.value === 0 ? "good" : entry.value <= 2 ? "warn" : "bad");
+    return `<div class="spark-bar ${cls}" style="height:${pct}%" title="${esc(entry.day)}: ${entry.value}"></div>`;
+  }).join("");
+}
+
+function failureActionForReason(reasonCode) {
+  const map = {
+    env_missing_openai: "Add OPENAI_API_KEY in Render environment and redeploy.",
+    env_missing_mcp: "Set MCP_BROWSER_URL and verify endpoint availability.",
+    timeout: "Lower extraction limits or switch this source to incremental watch.",
+    parse_failed: "Review adapter output and tighten extraction prompt/formatting.",
+    run_failed: "Inspect last run error and retry source after correction.",
+    not_run_yet: "Run this source once to establish baseline health."
+  };
+  return map[reasonCode] || "Inspect source run history and resolve blocking errors.";
+}
+
+function renderHistoryAndFailures(metrics) {
+  const history = metrics?.history?.by_day || [];
+  const failures = metrics?.failures?.groups || [];
+  const exactValues = history.map((row) => ({ day: row.day, value: Number(row.exact_match_rate || 0) }));
+  const failedRunValues = history.map((row) => ({ day: row.day, value: Number(row.failed_runs || 0) }));
+
+  renderTrendBars("exactMatchTrend", exactValues, "good-high");
+  renderTrendBars("runFailureTrend", failedRunValues, "good-low");
+
+  const firstDay = history[0]?.day || "-";
+  const lastDay = history[history.length - 1]?.day || "-";
+  document.getElementById("exactTrendStart").textContent = firstDay;
+  document.getElementById("exactTrendEnd").textContent = lastDay;
+  document.getElementById("failureTrendStart").textContent = firstDay;
+  document.getElementById("failureTrendEnd").textContent = lastDay;
+
+  const failureGroups = document.getElementById("failureGroups");
+  if (!failures.length) {
+    failureGroups.innerHTML = '<div style="font-size:12px;color:var(--muted)">No active failure groups.</div>';
+  } else {
+    failureGroups.innerHTML = failures.map((group) => {
+      const sources = (group.sources || []).slice(0, 4).map((s) => s.source_name).join(", ");
+      return `
+        <div class="failure-row">
+          <div class="failure-head">
+            <span>${esc(group.reason_code)} (${group.count})</span>
+            <span style="color:${group.status === "error" ? "var(--danger)" : "var(--warning)"}">${esc(group.status)}</span>
+          </div>
+          <div class="failure-note">${esc(group.reason || "")}</div>
+          <div class="failure-note"><strong>Action:</strong> ${esc(failureActionForReason(group.reason_code))}</div>
+          <div class="failure-sources">Sources: ${esc(sources || "None listed")}</div>
+        </div>
+      `;
+    }).join("");
+  }
+  document.getElementById("historyUpdated").textContent = "as of " + new Date().toLocaleTimeString();
 }
 
 /* ── Poster modal ────────────────────────────────────────────────────────── */
@@ -2001,8 +2165,10 @@ async function loadAll() {
     allEvents = stagingRes.events_staging || [];
     renderQueue();
     renderMetrics(metricsRes);
+    renderHistoryAndFailures(metricsRes);
     renderAgentGrades(metricsRes);
     renderPipeline(health, allEvents, activity);
+    setWorkspace(activeWorkspace);
     document.getElementById("tsLabel").textContent = "Updated " + new Date().toLocaleTimeString();
   } catch (e) {
     setOnline(false);

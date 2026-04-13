@@ -184,6 +184,13 @@ function reviewRowToObject(row) {
   };
 }
 
+function startOfUtcDayIso(daysAgo = 0) {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  d.setUTCDate(d.getUTCDate() - daysAgo);
+  return d.toISOString();
+}
+
 function classifySourceHealth(source, latestRun, envState) {
   if (!source.is_active) {
     return {
@@ -1284,6 +1291,106 @@ export function createRepository(config) {
         },
         { healthy: 0, warning: 0, error: 0, inactive: 0 }
       );
+      const historyDays = 14;
+      const historyFromIso = startOfUtcDayIso(historyDays - 1);
+      const reviewHistoryRows = db.prepare(`
+        SELECT substr(reviewed_at, 1, 10) AS day,
+               COUNT(*) AS reviewed_count
+        FROM events_staging
+        WHERE reviewed_at IS NOT NULL
+          AND reviewed_at >= ?
+        GROUP BY substr(reviewed_at, 1, 10)
+        ORDER BY day ASC
+      `).all(historyFromIso);
+      const correctionHistoryRows = db.prepare(`
+        SELECT substr(s.reviewed_at, 1, 10) AS day,
+               COUNT(*) AS corrected_count
+        FROM events_staging s
+        WHERE s.reviewed_at IS NOT NULL
+          AND s.reviewed_at >= ?
+          AND s.ai_baseline_payload_json IS NOT NULL
+          AND EXISTS (
+            SELECT 1
+            FROM staging_event_reviews r
+            WHERE r.staging_event_id = s.id
+              AND r.changed_fields_json != '[]'
+          )
+        GROUP BY substr(s.reviewed_at, 1, 10)
+        ORDER BY day ASC
+      `).all(historyFromIso);
+      const runsHistoryRows = db.prepare(`
+        SELECT substr(started_at, 1, 10) AS day,
+               SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS success_runs,
+               SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed_runs
+        FROM source_runs
+        WHERE started_at >= ?
+        GROUP BY substr(started_at, 1, 10)
+        ORDER BY day ASC
+      `).all(historyFromIso);
+      const historyMap = new Map();
+      const ensureDay = (day) => {
+        if (!historyMap.has(day)) {
+          historyMap.set(day, {
+            day,
+            reviewed_count: 0,
+            corrected_count: 0,
+            correction_rate: 0,
+            exact_match_rate: 0,
+            successful_runs: 0,
+            failed_runs: 0
+          });
+        }
+        return historyMap.get(day);
+      };
+      for (let i = historyDays - 1; i >= 0; i -= 1) {
+        const day = startOfUtcDayIso(i).slice(0, 10);
+        ensureDay(day);
+      }
+      for (const row of reviewHistoryRows) {
+        ensureDay(row.day).reviewed_count = Number(row.reviewed_count || 0);
+      }
+      for (const row of correctionHistoryRows) {
+        ensureDay(row.day).corrected_count = Number(row.corrected_count || 0);
+      }
+      for (const row of runsHistoryRows) {
+        const day = ensureDay(row.day);
+        day.successful_runs = Number(row.success_runs || 0);
+        day.failed_runs = Number(row.failed_runs || 0);
+      }
+      const historySeries = [...historyMap.values()].map((entry) => {
+        const reviewed = entry.reviewed_count || 0;
+        const corrected = entry.corrected_count || 0;
+        const correctionRate = reviewed > 0 ? +((corrected / reviewed) * 100).toFixed(1) : 0;
+        const exactMatchRate = reviewed > 0 ? +(((reviewed - corrected) / reviewed) * 100).toFixed(1) : 0;
+        return {
+          ...entry,
+          correction_rate: correctionRate,
+          exact_match_rate: exactMatchRate
+        };
+      });
+      const failureGroups = sourceHealth
+        .filter((row) => row.status === "error" || row.status === "warning")
+        .reduce((acc, row) => {
+          const key = row.reason_code || "unknown";
+          if (!acc[key]) {
+            acc[key] = {
+              reason_code: key,
+              status: row.status,
+              count: 0,
+              sources: [],
+              reason: row.reason
+            };
+          }
+          acc[key].count += 1;
+          acc[key].sources.push({
+            source_id: row.source_id,
+            source_name: row.source_name,
+            reason: row.reason,
+            last_run_status: row.last_run_status
+          });
+          return acc;
+        }, {});
+      const failureSummary = Object.values(failureGroups).sort((a, b) => b.count - a.count);
 
       return {
         agent1: { total_candidates: totalCandidates, by_source: candidates },
@@ -1312,6 +1419,13 @@ export function createRepository(config) {
           env: envState,
           counts: sourceHealthCounts,
           by_source: sourceHealth
+        },
+        history: {
+          days: historyDays,
+          by_day: historySeries
+        },
+        failures: {
+          groups: failureSummary
         },
         recent_runs: recentRuns
       };
