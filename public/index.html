@@ -1262,7 +1262,7 @@ function buildBody(ev, p, isDup) {
       ${!isDup && ev.review_status !== "approved" ? `
         <button class="btn btn-success btn-sm" onclick="setStatus('${ev.id}','approved');event.stopPropagation()">Mark Approved</button>` : ""}
       ${ev.review_status !== "rejected" ? `
-        <button class="btn btn-danger btn-sm" onclick="setStatus('${ev.id}','rejected');event.stopPropagation()">Reject</button>` : `
+        <button class="btn btn-danger btn-sm" onclick="rejectEvent('${ev.id}');event.stopPropagation()">Reject</button>` : `
         <button class="btn btn-muted btn-sm" onclick="setStatus('${ev.id}','pending');event.stopPropagation()">Restore</button>`}
     </div>`;
 }
@@ -1297,7 +1297,8 @@ function ftall(label, value) {
 /* ── Actions ─────────────────────────────────────────────────────────────── */
 async function setStatus(id, status) {
   try {
-    const res = await apiFetch("/api/events-staging/" + id, { method: "PATCH", body: { review_status: status } });
+    const body = { review_status: status };
+    const res = await apiFetch("/api/events-staging/" + id, { method: "PATCH", body });
     const idx = allEvents.findIndex(e => e.id === id);
     if (idx !== -1 && res.event) allEvents[idx] = { ...allEvents[idx], ...res.event };
     const idsBefore = getVisibleIds();
@@ -1315,6 +1316,39 @@ async function setStatus(id, status) {
         : status === "rejected" ? "Event rejected"
         : "Restored to pending", status === "approved" ? "ok" : status === "rejected" ? "err" : "inf");
   } catch (e) { toast("Error: " + e.message, "err"); }
+}
+
+async function rejectEvent(id) {
+  const reason = window.prompt("Rejection reason (required):");
+  if (!reason || !reason.trim()) {
+    toast("Rejection reason is required", "err");
+    return;
+  }
+  const faultRaw = window.prompt(
+    "Faulted agent (required): detail_extractor, dedupe_agent, hyperlocal_agent, listing_agent, other",
+    "detail_extractor"
+  );
+  const faultAgent = String(faultRaw || "").trim();
+  if (!faultAgent) {
+    toast("Faulted agent is required", "err");
+    return;
+  }
+  try {
+    const res = await apiFetch("/api/events-staging/" + id, {
+      method: "PATCH",
+      body: {
+        review_status: "rejected",
+        rejection_reason: reason.trim(),
+        fault_agent: faultAgent
+      }
+    });
+    const idx = allEvents.findIndex(e => e.id === id);
+    if (idx !== -1 && res.event) allEvents[idx] = { ...allEvents[idx], ...res.event };
+    renderQueue();
+    toast("Event rejected and feedback sent to learning loop", "ok");
+  } catch (e) {
+    toast("Reject failed: " + e.message, "err");
+  }
 }
 
 async function markUnique(id) {
@@ -1363,7 +1397,7 @@ document.addEventListener("keydown", (event) => {
     const id = activeOpenId();
     if (id) {
       event.preventDefault();
-      setStatus(id, "rejected");
+      rejectEvent(id);
     }
   } else if (key === "e") {
     const id = activeOpenId();

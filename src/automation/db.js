@@ -184,6 +184,18 @@ function reviewRowToObject(row) {
   };
 }
 
+function feedbackRowToObject(row) {
+  return {
+    id: row.id,
+    staging_event_id: row.staging_event_id,
+    source_id: row.source_id,
+    fault_agent: row.fault_agent,
+    rejection_reason: row.rejection_reason,
+    reviewer_name: row.reviewer_name,
+    created_at: row.created_at
+  };
+}
+
 function startOfUtcDayIso(daysAgo = 0) {
   const d = new Date();
   d.setUTCHours(0, 0, 0, 0);
@@ -369,12 +381,24 @@ export function createRepository(config) {
       created_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS agent_feedback (
+      id TEXT PRIMARY KEY,
+      staging_event_id TEXT NOT NULL,
+      source_id TEXT,
+      fault_agent TEXT NOT NULL,
+      rejection_reason TEXT NOT NULL,
+      reviewer_name TEXT,
+      created_at TEXT NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_sources_next_run_at ON sources(next_run_at);
     CREATE INDEX IF NOT EXISTS idx_event_candidates_source_id ON event_candidates(source_id);
     CREATE INDEX IF NOT EXISTS idx_events_staging_source_id ON events_staging(source_id);
     CREATE INDEX IF NOT EXISTS idx_source_runs_source_id ON source_runs(source_id);
     CREATE INDEX IF NOT EXISTS idx_staging_event_reviews_event_id ON staging_event_reviews(staging_event_id);
     CREATE INDEX IF NOT EXISTS idx_staging_event_reviews_created_at ON staging_event_reviews(created_at);
+    CREATE INDEX IF NOT EXISTS idx_agent_feedback_agent ON agent_feedback(fault_agent);
+    CREATE INDEX IF NOT EXISTS idx_agent_feedback_created_at ON agent_feedback(created_at);
   `);
 
   // Additive migrations — safe to run on existing databases
@@ -632,6 +656,19 @@ export function createRepository(config) {
     `),
     listRecentReviews: db.prepare(`
       SELECT * FROM staging_event_reviews
+      ORDER BY created_at DESC
+      LIMIT ?
+    `),
+    insertAgentFeedback: db.prepare(`
+      INSERT INTO agent_feedback (
+        id, staging_event_id, source_id, fault_agent, rejection_reason, reviewer_name, created_at
+      ) VALUES (
+        @id, @staging_event_id, @source_id, @fault_agent, @rejection_reason, @reviewer_name, @created_at
+      )
+    `),
+    listAgentFeedbackByAgent: db.prepare(`
+      SELECT * FROM agent_feedback
+      WHERE fault_agent = ?
       ORDER BY created_at DESC
       LIMIT ?
     `)
@@ -1457,6 +1494,28 @@ export function createRepository(config) {
         community_hub_events: statements.countTable("community_hub_events").get().count,
         source_runs: statements.countTable("source_runs").get().count
       };
+    },
+
+    addAgentFeedback(input = {}) {
+      const row = {
+        id: makeId("fb"),
+        staging_event_id: input.staging_event_id,
+        source_id: input.source_id || null,
+        fault_agent: input.fault_agent,
+        rejection_reason: input.rejection_reason,
+        reviewer_name: input.reviewer_name || null,
+        created_at: nowIso()
+      };
+      statements.insertAgentFeedback.run(row);
+      return feedbackRowToObject(row);
+    },
+
+    getAgentPromptGuidance(agentKey, limit = 8) {
+      const rows = statements.listAgentFeedbackByAgent
+        .all(agentKey, Math.max(1, Math.min(20, Number(limit) || 8)))
+        .map(feedbackRowToObject);
+      const uniqueReasons = [...new Set(rows.map((row) => String(row.rejection_reason || "").trim()).filter(Boolean))];
+      return uniqueReasons.map((reason, idx) => `${idx + 1}. ${reason}`);
     }
   };
 }

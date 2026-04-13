@@ -35,7 +35,7 @@ export function buildDedupeContext(repository, currentSourceId, limit = 50) {
  * LLM duplicate comparator: runs after deterministic SQL rules.
  * Does not use Playwright MCP — only structured JSON comparison.
  */
-export async function runDuplicateCompareAgent(incomingEvent, context, runtimeConfig) {
+export async function runDuplicateCompareAgent(incomingEvent, context, runtimeConfig, feedbackGuidance = []) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error("duplicate compare agent requires OPENAI_API_KEY");
@@ -65,6 +65,9 @@ export async function runDuplicateCompareAgent(incomingEvent, context, runtimeCo
     organizational_sponsor: incomingEvent.organizational_sponsor
   };
 
+  const feedbackSection = feedbackGuidance.length
+    ? `\nRecent reviewer feedback to avoid repeating mistakes:\n${feedbackGuidance.map((line) => `- ${line}`).join("\n")}\n`
+    : "";
   const input = `You are a duplicate-detection agent for community calendar events.
 
 Rules:
@@ -84,7 +87,8 @@ existing_staging (other sources):
 ${JSON.stringify(context.staging, null, 2)}
 
 published_hub:
-${JSON.stringify(context.hub, null, 2)}`;
+${JSON.stringify(context.hub, null, 2)}
+${feedbackSection}`;
 
   const response = await client.responses.create({
     model,

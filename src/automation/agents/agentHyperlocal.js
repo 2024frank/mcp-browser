@@ -134,7 +134,7 @@ function deriveHeuristicScope(event) {
  * @param {object} runtimeConfig
  * @returns {{ scope: string, geographic_tags: string[], confidence: number, reason: string }}
  */
-export async function runHyperlocalAgent(event, runtimeConfig = {}) {
+export async function runHyperlocalAgent(event, runtimeConfig = {}, feedbackGuidance = []) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error("hyperlocal agent requires OPENAI_API_KEY");
@@ -172,6 +172,9 @@ export async function runHyperlocalAgent(event, runtimeConfig = {}) {
         : null
   };
 
+  const feedbackSection = feedbackGuidance.length
+    ? `\nRecent reviewer feedback to avoid repeating mistakes:\n${feedbackGuidance.map((line) => `- ${line}`).join("\n")}\n`
+    : "";
   const input = `You are a geographic scope classifier for community events in and around Oberlin, Ohio.
 
 Context:
@@ -208,7 +211,8 @@ Examples:
 Return a single JSON object only (no markdown):
 {"scope":"string","geographic_tags":["string"],"confidence":number,"reason":"string"}
 
-confidence should be a float 0–1 reflecting how certain you are of the classification.`;
+confidence should be a float 0–1 reflecting how certain you are of the classification.
+${feedbackSection}`;
 
   const heuristic = deriveHeuristicScope(eventSummary);
   if (heuristic && heuristic.confidence >= 0.8) {

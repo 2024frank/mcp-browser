@@ -179,6 +179,19 @@ app.patch("/api/events-staging/:id", (request, response) => {
       response.status(400).json({ error: `review_status must be one of: ${valid.join(", ")}` });
       return;
     }
+    if (body.review_status === "rejected") {
+      if (!String(body.rejection_reason || "").trim()) {
+        response.status(400).json({ error: "rejection_reason is required when rejecting an event" });
+        return;
+      }
+      const validAgents = ["detail_extractor", "dedupe_agent", "hyperlocal_agent", "listing_agent", "other"];
+      if (!validAgents.includes(body.fault_agent)) {
+        response.status(400).json({
+          error: `fault_agent must be one of: ${validAgents.join(", ")}`
+        });
+        return;
+      }
+    }
   }
 
   const updated = repository.reviewStagingEvent(
@@ -192,6 +205,15 @@ app.patch("/api/events-staging/:id", (request, response) => {
   if (!updated) {
     response.status(404).json({ error: "Staging event not found" });
     return;
+  }
+  if (body.review_status === "rejected") {
+    repository.addAgentFeedback({
+      staging_event_id: updated.id,
+      source_id: updated.source_id || null,
+      fault_agent: body.fault_agent,
+      rejection_reason: String(body.rejection_reason).trim(),
+      reviewer_name: body.reviewer_name || null
+    });
   }
   response.json({ event: updated });
 });

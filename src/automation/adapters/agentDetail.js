@@ -89,7 +89,7 @@ function computeCompleteness(hub) {
 /**
  * One event page → Community Hub dashboard–shaped JSON (OpenAI + remote Playwright MCP).
  */
-export async function extractDashboardEventFromCandidate(source, candidate, runtimeConfig) {
+export async function extractDashboardEventFromCandidate(source, candidate, runtimeConfig, feedbackGuidance = []) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error("detail extraction requires OPENAI_API_KEY");
@@ -107,6 +107,10 @@ export async function extractDashboardEventFromCandidate(source, candidate, runt
 
   const eventUrl = candidate.event_url;
   const client = new OpenAI({ apiKey });
+
+  const feedbackSection = feedbackGuidance.length
+    ? `\nRecent reviewer feedback to avoid repeating mistakes:\n${feedbackGuidance.map((line) => `- ${line}`).join("\n")}\n`
+    : "";
 
   const input = `You are an event detail extractor for the Oberlin Community Hub dashboard.
 
@@ -144,7 +148,8 @@ Extract data for the Environmental Dashboard calendar submission form. Return ON
 Do not invent dates or venues. If a field cannot be determined, use null or empty array as appropriate.
 If title is not clearly visible, use this listing hint as title: "${candidate.title_hint || "n/a"}".
 Prefer complete structured output over partial output.
-Link hint from listing: ${candidate.title_hint || "n/a"}`;
+Link hint from listing: ${candidate.title_hint || "n/a"}
+${feedbackSection}`;
 
   const response = await client.responses.create({
     model,

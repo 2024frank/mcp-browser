@@ -126,6 +126,9 @@ export function createAutomationService(repository, runtimeConfig) {
 
       const stagedEvents = [...(result.stagedEvents || [])];
       const baseStagedCount = stagedEvents.length;
+      const detailFeedback = repository.getAgentPromptGuidance("detail_extractor", 8);
+      const hyperlocalFeedback = repository.getAgentPromptGuidance("hyperlocal_agent", 8);
+      const dedupeFeedback = repository.getAgentPromptGuidance("dedupe_agent", 8);
 
       if (shouldExtractEventDetails(source, result)) {
         const maxDetail = Number(source.adapter_config?.max_detail_extractions ?? 25);
@@ -139,7 +142,8 @@ export function createAutomationService(repository, runtimeConfig) {
             const evt = await extractDashboardEventFromCandidate(
               source,
               candidate,
-              runtimeConfig
+              runtimeConfig,
+              detailFeedback
             );
             stagedEvents.push(evt);
             extracted += 1;
@@ -166,7 +170,7 @@ export function createAutomationService(repository, runtimeConfig) {
         if (process.env.OPENAI_API_KEY?.trim()) {
           logActivity({ type: "hyperlocal_start", title: event.title });
           try {
-            const geo = await runHyperlocalAgent(event, runtimeConfig);
+            const geo = await runHyperlocalAgent(event, runtimeConfig, hyperlocalFeedback);
             event.hyperlocal_scope = geo.scope;
             event.geographic_tags = geo.geographic_tags;
             logActivity({ type: "hyperlocal_done", title: event.title, scope: geo.scope });
@@ -192,7 +196,7 @@ export function createAutomationService(repository, runtimeConfig) {
               source.id,
               runtimeConfig.openaiDedupeContextLimit
             );
-            const llm = await runDuplicateCompareAgent(event, ctx, runtimeConfig);
+            const llm = await runDuplicateCompareAgent(event, ctx, runtimeConfig, dedupeFeedback);
             if (llm.applied && llm.is_duplicate) {
               duplicateMatch = {
                 is_duplicate: true,
@@ -341,6 +345,9 @@ export function createAutomationService(repository, runtimeConfig) {
       const shouldExtract =
         source.adapter_key === "openai_listing_v1" &&
         source.adapter_config?.extract_event_details !== false;
+      const detailFeedback = repository.getAgentPromptGuidance("detail_extractor", 8);
+      const hyperlocalFeedback = repository.getAgentPromptGuidance("hyperlocal_agent", 8);
+      const dedupeFeedback = repository.getAgentPromptGuidance("dedupe_agent", 8);
 
       for (const candidate of newCandidates) {
         if (extracted >= maxDetail) break;
@@ -349,7 +356,7 @@ export function createAutomationService(repository, runtimeConfig) {
         logActivity({ type: "detail_start", source: source.source_name, url: candidate.event_url, title: candidate.title_hint || null });
         let event;
         try {
-          event = await extractDashboardEventFromCandidate(source, candidate, runtimeConfig);
+          event = await extractDashboardEventFromCandidate(source, candidate, runtimeConfig, detailFeedback);
           extracted++;
           logActivity({ type: "detail_done", source: source.source_name, title: event.title });
         } catch (err) {
@@ -363,7 +370,7 @@ export function createAutomationService(repository, runtimeConfig) {
         if (process.env.OPENAI_API_KEY?.trim()) {
           logActivity({ type: "hyperlocal_start", title: event.title });
           try {
-            const geo = await runHyperlocalAgent(event, runtimeConfig);
+            const geo = await runHyperlocalAgent(event, runtimeConfig, hyperlocalFeedback);
             event.hyperlocal_scope = geo.scope;
             event.geographic_tags  = geo.geographic_tags;
             logActivity({ type: "hyperlocal_done", title: event.title, scope: geo.scope });
@@ -384,7 +391,7 @@ export function createAutomationService(repository, runtimeConfig) {
           logActivity({ type: "dedupe_start", title: event.title });
           try {
             const ctx = buildDedupeContext(repository, source.id, runtimeConfig.openaiDedupeContextLimit);
-            const llm = await runDuplicateCompareAgent(event, ctx, runtimeConfig);
+            const llm = await runDuplicateCompareAgent(event, ctx, runtimeConfig, dedupeFeedback);
             if (llm.applied && llm.is_duplicate) {
               duplicateMatch = { is_duplicate: true, duplicate_match_url: llm.duplicate_match_url, duplicate_reason: llm.duplicate_reason };
               logActivity({ type: "dedupe_done", title: event.title, is_duplicate: true, reason: llm.duplicate_reason });
