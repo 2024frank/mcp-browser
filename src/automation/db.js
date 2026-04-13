@@ -1777,6 +1777,29 @@ export function createRepository(config) {
         .map(feedbackRowToObject);
       const uniqueReasons = [...new Set(rows.map((row) => String(row.rejection_reason || "").trim()).filter(Boolean))];
       return uniqueReasons.map((reason, idx) => `${idx + 1}. ${reason}`);
+    },
+
+    /**
+     * Wipe all event data (candidates, staging, hub mirror, runs, reviews, feedback)
+     * while keeping sources intact. Used by the maintenance reset endpoint so the
+     * pipeline can restart from a clean state without losing source configuration.
+     */
+    resetEventData() {
+      const counts = {};
+      for (const table of [
+        "event_candidates",
+        "events_staging",
+        "community_hub_events",
+        "source_runs",
+        "staging_event_reviews",
+        "agent_feedback"
+      ]) {
+        counts[table] = db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n;
+        db.prepare(`DELETE FROM ${table}`).run();
+      }
+      // Reset next_run_at on all sources so they are immediately due
+      db.prepare(`UPDATE sources SET next_run_at = ? WHERE is_active = 1`).run(nowIso());
+      return { cleared: counts, reset_at: nowIso() };
     }
   };
 }

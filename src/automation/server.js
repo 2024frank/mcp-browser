@@ -35,6 +35,8 @@ app.get("/", (_request, response) => {
       community_hub_events_sync_legacy_api: "POST /api/community-hub-events/sync-legacy-api",
       community_hub_events_sync_browser: "POST /api/community-hub-events/sync-browser",
       research_snapshot: "/api/research/snapshot",
+      maintenance_reset:
+        "POST /api/maintenance/reset (requires ALLOW_MAINTENANCE_RESET=true + body {confirm:'RESET'})",
       maintenance_backfill_canonical:
         "POST /api/maintenance/backfill-canonical-urls (requires ALLOW_MAINTENANCE_BACKFILL=true)"
     }
@@ -364,6 +366,43 @@ app.get("/api/research/snapshot", (_request, response) => {
       hub_snapshot_url: config.communityHubCalendarUrl
     }
   });
+});
+
+/**
+ * POST /api/maintenance/reset
+ * Wipes all event data (candidates, staging, hub events, runs, feedback) and
+ * re-seeds sources from sources.example.json so the pipeline restarts clean.
+ * Requires ALLOW_MAINTENANCE_RESET=true (set temporarily on Render, unset after).
+ * Body: { "confirm": "RESET" }  (must pass exact string to prevent accidents)
+ */
+app.post("/api/maintenance/reset", (request, response) => {
+  if (process.env.ALLOW_MAINTENANCE_RESET !== "true") {
+    response.status(403).json({
+      error: "Disabled. Set ALLOW_MAINTENANCE_RESET=true temporarily, then unset after."
+    });
+    return;
+  }
+  const body = request.body || {};
+  if (body.confirm !== "RESET") {
+    response.status(400).json({ error: 'Send { "confirm": "RESET" } to confirm.' });
+    return;
+  }
+  try {
+    const result = repository.resetEventData();
+    // Re-seed sources from the seed file
+    let seeded = 0;
+    try {
+      const raw = fs.readFileSync(config.seedSourcesPath, "utf8");
+      const seedSources = JSON.parse(raw);
+      const applied = repository.applySeedSources(seedSources);
+      seeded = applied.inserted + applied.updated;
+    } catch (seedErr) {
+      console.warn("reset: seed re-apply failed:", seedErr.message);
+    }
+    response.json({ ...result, sources_reseeded: seeded });
+  } catch (err) {
+    response.status(500).json({ error: err.message });
+  }
 });
 
 /**
