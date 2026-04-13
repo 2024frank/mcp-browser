@@ -174,6 +174,29 @@ const adapters = {
   fava_v1: runFAVAAdapter
 };
 
+/**
+ * Calculate a completeness score (0–100) from the fields present on an event.
+ * Used for events produced directly by structured adapters (Localist, Heritage Center,
+ * AMAM) that skip agentDetail, so the UI always shows a meaningful C: badge.
+ */
+function deriveCompletenessScore(event) {
+  const scored = [
+    ["title",               !!event.title],
+    ["start_datetime",      !!event.start_datetime],
+    ["end_datetime",        !!event.end_datetime],
+    ["location_or_address", !!event.location_or_address],
+    ["location_type",       !!event.location_type],
+    ["short_description",   !!(event.short_description || event.extended_description)],
+    ["extended_description",!!event.extended_description],
+    ["artwork_url",         !!event.artwork_url],
+    ["organizational_sponsor", !!event.organizational_sponsor],
+    ["event_link",          !!event.event_link],
+    ["source_event_url",    !!event.source_event_url],
+  ];
+  const present = scored.filter(([, v]) => v).length;
+  return Math.round((present / scored.length) * 100);
+}
+
 /** Merge one-off adapter_config keys for a single run (does not persist to DB). */
 function sourceWithRunAdapterPatch(sourceRecord, patch) {
   if (!patch || typeof patch !== "object" || Object.keys(patch).length === 0) {
@@ -374,6 +397,25 @@ export function createAutomationService(repository, runtimeConfig) {
       }
 
       const detailExtractionsAdded = stagedEvents.length - baseStagedCount;
+
+      // Ensure every staged event has a completeness score. Events from structured
+      // adapters (localist, heritage_center, amam) skip agentDetail and arrive with
+      // no score — derive one from present fields so the UI shows C:NN not C:0.
+      for (const event of stagedEvents) {
+        const meta = event.extraction_metadata || {};
+        if (!meta.completeness_score) {
+          event.extraction_metadata = {
+            ...meta,
+            completeness_score: deriveCompletenessScore(event)
+          };
+          if (event.community_hub_payload) {
+            event.community_hub_payload = {
+              ...event.community_hub_payload,
+              extraction_metadata: event.extraction_metadata
+            };
+          }
+        }
+      }
 
       for (const candidate of result.candidates || []) {
         const upsert = repository.upsertCandidate(source.id, candidate);
