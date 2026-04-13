@@ -201,6 +201,16 @@
     .tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
     .tab:hover:not(.active) { background: var(--bg); }
     .queue-count { font-size: 12px; color: var(--muted); font-weight: 600; }
+    .batch-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--border);
+      background: #f8fafc;
+      font-size: 12px;
+      color: var(--muted);
+    }
 
     /* ── Event card ───────────────────────────────────────── */
     .event-card { border-bottom: 1px solid var(--border); }
@@ -554,6 +564,12 @@
             <option value="source_asc">Source A-Z</option>
             <option value="start_asc">Start Time</option>
           </select>
+          <select id="completenessFilter" class="tab" style="border-radius:6px" onchange="setCompletenessFilter(this.value)">
+            <option value="all">All Completeness</option>
+            <option value="high">High (85+)</option>
+            <option value="medium">Medium (60-84)</option>
+            <option value="low">Low (&lt;60)</option>
+          </select>
         </div>
       </div>
       <div id="reviewQueue">
@@ -812,6 +828,36 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="rejectOverlay" onclick="closeRejectModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Reject Event</div>
+        <div class="modal-subtitle" id="rejectSubtitle"></div>
+      </div>
+      <button class="modal-close" onclick="closeRejectModal()">x</button>
+    </div>
+    <div class="input-group">
+      <label>Faulted Agent</label>
+      <select id="rejectFaultAgent">
+        <option value="detail_extractor">detail_extractor</option>
+        <option value="dedupe_agent">dedupe_agent</option>
+        <option value="hyperlocal_agent">hyperlocal_agent</option>
+        <option value="listing_agent">listing_agent</option>
+        <option value="other">other</option>
+      </select>
+    </div>
+    <div class="input-group">
+      <label>Rejection Reason</label>
+      <textarea id="rejectReason" rows="4" placeholder="Describe the error so the agent can avoid it in future runs"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeRejectModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="submitRejectModal()">Reject</button>
+    </div>
+  </div>
+</div>
+
 <div id="toasts"></div>
 
 <!-- ═══ JAVASCRIPT ═══════════════════════════════════════════════════════════ -->
@@ -825,7 +871,10 @@ let openCards = new Set();
 let sourceHealthMap = {};
 let sourceFilter = "all";
 let queueSort = "updated_desc";
+let completenessFilter = "all";
 let activeWorkspace = "operations";
+let selectedEvents = new Set();
+let pendingRejectIds = [];
 
 let editingSourceId = null;
 let editingEventId  = null;
@@ -1033,12 +1082,17 @@ function renderRuns(runs) {
 /* ── Queue ───────────────────────────────────────────────────────────────── */
 function setFilter(f) {
   filter = f;
-  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.f === f));
+  document.querySelectorAll(".tab[data-f]").forEach(t => t.classList.toggle("active", t.dataset.f === f));
   renderQueue();
 }
 
 function setQueueSort(value) {
   queueSort = value || "updated_desc";
+  renderQueue();
+}
+
+function setCompletenessFilter(value) {
+  completenessFilter = value || "all";
   renderQueue();
 }
 
@@ -1052,6 +1106,14 @@ function filteredEvents() {
     default:          items = [...allEvents];
   }
   if (!items) items = [...allEvents];
+  items = items.filter((event) => {
+    if (completenessFilter === "all") return true;
+    const score = Number(event?.extraction_metadata?.completeness_score || 0);
+    if (completenessFilter === "high") return score >= 85;
+    if (completenessFilter === "medium") return score >= 60 && score < 85;
+    if (completenessFilter === "low") return score < 60;
+    return true;
+  });
 
   const cmpDate = (a, b, field, asc = false) => {
     const left = a[field] ? new Date(a[field]).getTime() : 0;
@@ -1082,7 +1144,14 @@ function renderQueue() {
   const truncation = allEvents.length >= 200
     ? `<div style="padding:10px 16px;font-size:12px;color:var(--warning);background:var(--warning-bg);border-bottom:1px solid var(--warning-border)">Displaying first 200 events. Refine filters or add pagination for full backlog.</div>`
     : "";
-  document.getElementById("reviewQueue").innerHTML = truncation + evts.map(ev => buildCard(ev)).join("");
+  const batchBar = `<div class="batch-bar">
+    <span>${selectedEvents.size} selected</span>
+    <button class="btn btn-outline btn-xs" onclick="selectVisibleEvents()">Select Visible</button>
+    <button class="btn btn-outline btn-xs" onclick="clearSelection()">Clear</button>
+    <button class="btn btn-success btn-xs" onclick="batchApprove()">Approve Selected</button>
+    <button class="btn btn-danger btn-xs" onclick="batchReject()">Reject Selected</button>
+  </div>`;
+  document.getElementById("reviewQueue").innerHTML = batchBar + truncation + evts.map(ev => buildCard(ev)).join("");
   openCards.forEach(id => {
     const el = document.getElementById("c-" + id);
     if (el) el.classList.add("open");
@@ -1133,10 +1202,13 @@ function buildCard(ev) {
 
   const dateLine = fmtDate(ev.start_datetime);
   const loc      = ev.location_or_address || "";
+  const completeness = Number(ev?.extraction_metadata?.completeness_score || 0);
+  const completenessBadge = `<span class="badge ${completeness >= 85 ? "b-approved" : completeness >= 60 ? "b-pending" : "b-rejected"}">C:${completeness}</span>`;
 
   return `
 <div class="event-card" id="c-${ev.id}">
   <div class="card-head" onclick="toggleCard('${ev.id}')">
+    <input type="checkbox" ${selectedEvents.has(ev.id) ? "checked" : ""} onclick="toggleSelectEvent('${ev.id}', event)">
     <svg class="chevron" viewBox="0 0 20 20" fill="currentColor">
       <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
     </svg>
@@ -1150,6 +1222,7 @@ function buildCard(ev) {
       </div>
     </div>
     <div class="badges">
+      ${completenessBadge}
       ${ev.hyperlocal_scope ? `<span class="badge ${scopeCls}">${scopeTxt}</span>` : ""}
       <span class="badge ${statusCls}">${statusTxt}</span>
     </div>
@@ -1324,36 +1397,56 @@ async function setStatus(id, status) {
 }
 
 async function rejectEvent(id) {
-  const reason = window.prompt("Rejection reason (required):");
-  if (!reason || !reason.trim()) {
+  openRejectModal([id]);
+}
+
+function openRejectModal(ids) {
+  pendingRejectIds = ids;
+  document.getElementById("rejectReason").value = "";
+  document.getElementById("rejectFaultAgent").value = "detail_extractor";
+  document.getElementById("rejectSubtitle").textContent = `${ids.length} event(s) will be rejected`;
+  document.getElementById("rejectOverlay").classList.add("open");
+}
+
+function closeRejectModal(e) {
+  if (e && e.target !== document.getElementById("rejectOverlay")) return;
+  document.getElementById("rejectOverlay").classList.remove("open");
+  pendingRejectIds = [];
+}
+
+async function submitRejectModal() {
+  const reason = document.getElementById("rejectReason").value.trim();
+  const faultAgent = document.getElementById("rejectFaultAgent").value;
+  if (!reason) {
     toast("Rejection reason is required", "err");
     return;
   }
-  const faultRaw = window.prompt(
-    "Faulted agent (required): detail_extractor, dedupe_agent, hyperlocal_agent, listing_agent, other",
-    "detail_extractor"
-  );
-  const faultAgent = String(faultRaw || "").trim();
-  if (!faultAgent) {
-    toast("Faulted agent is required", "err");
+  if (!pendingRejectIds.length) {
+    toast("No events selected for rejection", "err");
     return;
   }
-  try {
-    const res = await apiFetch("/api/events-staging/" + id, {
-      method: "PATCH",
-      body: {
-        review_status: "rejected",
-        rejection_reason: reason.trim(),
-        fault_agent: faultAgent
-      }
-    });
-    const idx = allEvents.findIndex(e => e.id === id);
-    if (idx !== -1 && res.event) allEvents[idx] = { ...allEvents[idx], ...res.event };
-    renderQueue();
-    toast("Event rejected and feedback sent to learning loop", "ok");
-  } catch (e) {
-    toast("Reject failed: " + e.message, "err");
+  let success = 0;
+  for (const id of pendingRejectIds) {
+    try {
+      const res = await apiFetch("/api/events-staging/" + id, {
+        method: "PATCH",
+        body: {
+          review_status: "rejected",
+          rejection_reason: reason,
+          fault_agent: faultAgent
+        }
+      });
+      const idx = allEvents.findIndex(e => e.id === id);
+      if (idx !== -1 && res.event) allEvents[idx] = { ...allEvents[idx], ...res.event };
+      selectedEvents.delete(id);
+      success += 1;
+    } catch {
+      // keep going for batch processing
+    }
   }
+  closeRejectModal();
+  renderQueue();
+  toast(`${success} event(s) rejected and feedback sent to learning loop`, success ? "ok" : "err");
 }
 
 async function markUnique(id) {
@@ -1378,6 +1471,55 @@ async function markUnique(id) {
 function activeOpenId() {
   const first = [...openCards][0];
   return first || null;
+}
+
+function toggleSelectEvent(id, event) {
+  event.stopPropagation();
+  if (selectedEvents.has(id)) selectedEvents.delete(id);
+  else selectedEvents.add(id);
+  renderQueue();
+}
+
+function selectVisibleEvents() {
+  for (const id of getVisibleIds()) selectedEvents.add(id);
+  renderQueue();
+}
+
+function clearSelection() {
+  selectedEvents.clear();
+  renderQueue();
+}
+
+async function batchApprove() {
+  if (!selectedEvents.size) {
+    toast("Select events first", "err");
+    return;
+  }
+  let success = 0;
+  for (const id of [...selectedEvents]) {
+    try {
+      const res = await apiFetch("/api/events-staging/" + id, {
+        method: "PATCH",
+        body: { review_status: "approved" }
+      });
+      const idx = allEvents.findIndex(e => e.id === id);
+      if (idx !== -1 && res.event) allEvents[idx] = { ...allEvents[idx], ...res.event };
+      selectedEvents.delete(id);
+      success += 1;
+    } catch {
+      // continue
+    }
+  }
+  renderQueue();
+  toast(`${success} event(s) approved`, success ? "ok" : "err");
+}
+
+function batchReject() {
+  if (!selectedEvents.size) {
+    toast("Select events first", "err");
+    return;
+  }
+  openRejectModal([...selectedEvents]);
 }
 
 document.addEventListener("keydown", (event) => {
