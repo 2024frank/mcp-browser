@@ -81,6 +81,9 @@ function stagingRowToObject(row) {
     geographic_tags: parseJson(row.geographic_tags_json, []),
     community_hub_payload: parseJson(row.community_hub_payload_json, {}),
     raw_payload: parseJson(row.raw_payload_json, null),
+    accessibility_description: row.accessibility_description || null,
+    published_at: row.published_at || null,
+    hub_submission_id: row.hub_submission_id || null,
     discovered_at: row.discovered_at,
     updated_at: row.updated_at
   };
@@ -112,6 +115,7 @@ const REVIEW_TRACKED_FIELDS = [
   "short_description",
   "extended_description",
   "artwork_url",
+  "accessibility_description",
   "is_duplicate",
   "duplicate_match_url",
   "duplicate_reason",
@@ -135,6 +139,7 @@ function buildReviewSnapshot(event) {
     short_description: event.short_description || null,
     extended_description: event.extended_description || null,
     artwork_url: event.artwork_url || null,
+    accessibility_description: event.accessibility_description || null,
     is_duplicate:
       event.is_duplicate === null || event.is_duplicate === undefined
         ? null
@@ -165,6 +170,7 @@ function syncCommunityHubPayload(payload, snapshot) {
     short_description_for_digital_signs: snapshot.short_description || "",
     extended_description_for_web_and_newsletter: snapshot.extended_description || "",
     artwork_upload_or_gallery: snapshot.artwork_url || null,
+    accessibility_description: snapshot.accessibility_description || "",
     is_duplicate: snapshot.is_duplicate,
     duplicate_match_url: snapshot.duplicate_match_url
   };
@@ -339,6 +345,9 @@ export function createRepository(config) {
       reviewed_at TEXT,
       community_hub_payload_json TEXT NOT NULL DEFAULT '{}',
       raw_payload_json TEXT,
+      accessibility_description TEXT,
+      published_at TEXT,
+      hub_submission_id TEXT,
       discovered_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       UNIQUE(source_id, source_event_url)
@@ -410,6 +419,9 @@ export function createRepository(config) {
     `ALTER TABLE events_staging ADD COLUMN ai_baseline_payload_json TEXT`,
     `ALTER TABLE events_staging ADD COLUMN extraction_metadata_json TEXT NOT NULL DEFAULT '{}'`,
     `ALTER TABLE events_staging ADD COLUMN reviewed_at TEXT`,
+    `ALTER TABLE events_staging ADD COLUMN accessibility_description TEXT`,
+    `ALTER TABLE events_staging ADD COLUMN published_at TEXT`,
+    `ALTER TABLE events_staging ADD COLUMN hub_submission_id TEXT`,
     `ALTER TABLE community_hub_events ADD COLUMN short_description TEXT`,
     `ALTER TABLE community_hub_events ADD COLUMN extended_description TEXT`
   ]) {
@@ -517,7 +529,8 @@ export function createRepository(config) {
         source_event_url, is_duplicate, duplicate_match_url, duplicate_reason, confidence,
         review_status, ai_baseline_payload_json, extraction_metadata_json, reviewed_at,
         hyperlocal_scope, geographic_tags_json,
-        community_hub_payload_json, raw_payload_json, discovered_at, updated_at
+        community_hub_payload_json, raw_payload_json, accessibility_description,
+        published_at, hub_submission_id, discovered_at, updated_at
       ) VALUES (
         @id, @source_id, @source_candidate_id, @external_event_id, @title,
         @organizational_sponsor, @event_type_categories_json, @start_datetime, @end_datetime,
@@ -526,7 +539,8 @@ export function createRepository(config) {
         @source_event_url, @is_duplicate, @duplicate_match_url, @duplicate_reason, @confidence,
         @review_status, @ai_baseline_payload_json, @extraction_metadata_json, @reviewed_at,
         @hyperlocal_scope, @geographic_tags_json,
-        @community_hub_payload_json, @raw_payload_json, @discovered_at, @updated_at
+        @community_hub_payload_json, @raw_payload_json, @accessibility_description,
+        @published_at, @hub_submission_id, @discovered_at, @updated_at
       )
     `),
     updateStaging: db.prepare(`
@@ -545,6 +559,9 @@ export function createRepository(config) {
           short_description = @short_description,
           extended_description = @extended_description,
           artwork_url = @artwork_url,
+          accessibility_description = @accessibility_description,
+          published_at = @published_at,
+          hub_submission_id = @hub_submission_id,
           source_name = @source_name,
           source_domain = @source_domain,
           source_listing_url = @source_listing_url,
@@ -576,6 +593,9 @@ export function createRepository(config) {
           short_description = @short_description,
           extended_description = @extended_description,
           artwork_url = @artwork_url,
+          accessibility_description = @accessibility_description,
+          published_at = @published_at,
+          hub_submission_id = @hub_submission_id,
           is_duplicate = @is_duplicate,
           duplicate_match_url = @duplicate_match_url,
           duplicate_reason = @duplicate_reason,
@@ -871,6 +891,9 @@ export function createRepository(config) {
         geographic_tags_json: JSON.stringify(event.geographic_tags || []),
         community_hub_payload_json: JSON.stringify(event.community_hub_payload || {}),
         raw_payload_json: JSON.stringify(event.raw_payload || null),
+        accessibility_description: event.accessibility_description || existing?.accessibility_description || null,
+        published_at: event.published_at || existing?.published_at || null,
+        hub_submission_id: event.hub_submission_id || existing?.hub_submission_id || null,
         discovered_at: existing?.discovered_at || now,
         updated_at: now
       };
@@ -906,7 +929,10 @@ export function createRepository(config) {
         "event_link",
         "short_description",
         "extended_description",
-        "artwork_url"
+        "artwork_url",
+        "accessibility_description",
+        "published_at",
+        "hub_submission_id"
       ]) {
         if (Object.prototype.hasOwnProperty.call(input, field)) {
           next[field] = input[field] ?? null;
@@ -971,6 +997,9 @@ export function createRepository(config) {
         short_description: next.short_description || null,
         extended_description: next.extended_description || null,
         artwork_url: next.artwork_url || null,
+        accessibility_description: next.accessibility_description || null,
+        published_at: next.published_at || null,
+        hub_submission_id: next.hub_submission_id || null,
         is_duplicate:
           next.is_duplicate === null || next.is_duplicate === undefined
             ? null
@@ -1298,6 +1327,7 @@ export function createRepository(config) {
       let comparableReviewed = 0;
       let correctedEvents = 0;
       let changedFieldTotal = 0;
+      let totalFieldsReviewed = 0;
       let duplicateOverrides = 0;
       const bySource = {};
 
@@ -1341,6 +1371,7 @@ export function createRepository(config) {
           duplicateOverrides += 1;
         }
         changedFieldTotal += changed.length;
+        totalFieldsReviewed += ACCURACY_COMPARISON_FIELDS.length;
 
         for (const field of ACCURACY_COMPARISON_FIELDS) {
           fieldStats[field].reviewed_count += 1;
@@ -1550,6 +1581,8 @@ export function createRepository(config) {
             comparableReviewed > 0 ? +((correctedEvents / comparableReviewed) * 100).toFixed(1) : 0,
           exact_match_rate:
             comparableReviewed > 0 ? +(((comparableReviewed - correctedEvents) / comparableReviewed) * 100).toFixed(1) : 0,
+          automation_leverage:
+            totalFieldsReviewed > 0 ? +(((totalFieldsReviewed - changedFieldTotal) / totalFieldsReviewed) * 100).toFixed(1) : 0,
           average_changed_fields:
             comparableReviewed > 0 ? +(changedFieldTotal / comparableReviewed).toFixed(2) : 0,
           duplicate_overrides: duplicateOverrides,

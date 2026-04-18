@@ -169,6 +169,9 @@ app.patch("/api/events-staging/:id", (request, response) => {
     "short_description",
     "extended_description",
     "artwork_url",
+    "accessibility_description",
+    "published_at",
+    "hub_submission_id",
     "is_duplicate",
     "duplicate_match_url",
     "duplicate_reason"
