@@ -838,6 +838,20 @@
       <label>Artwork / Image URL</label>
       <input type="url" id="ee_artwork_url">
     </div>
+    <div class="input-group">
+      <label>Accessibility / Image Alt Text</label>
+      <textarea id="ee_accessibility_description" rows="2" placeholder="Describe the image for screen readers"></textarea>
+    </div>
+    <div class="ig-grid-wrap">
+      <div class="input-group">
+        <label>Published At (ISO)</label>
+        <input type="text" id="ee_published_at" placeholder="YYYY-MM-DDTHH:MM:SSZ">
+      </div>
+      <div class="input-group">
+        <label>Hub Submission ID</label>
+        <input type="text" id="ee_hub_submission_id" placeholder="e.g. 12345">
+      </div>
+    </div>
     <div class="ig-grid-wrap">
       <div class="input-group">
         <label>Reviewer (optional)</label>
@@ -1354,6 +1368,7 @@ function buildBody(ev, p, isDup) {
         </div>
         ${f("Display Target",  p.display_target || "All Public Screens")}
         ${f("Artwork / Image URL", p.artwork_upload_or_gallery || ev.artwork_url)}
+        ${ftall("Accessibility / Image Alt Text", ev.accessibility_description || p.accessibility_description)}
       </div>
     </div>
 
@@ -1381,7 +1396,16 @@ function buildBody(ev, p, isDup) {
       </div>
     </div>
 
-    <!-- 7. Source attribution -->
+    <!-- 7. Publication info -->
+    <div class="fsection">
+      <div class="fsection-title">Publication Info</div>
+      <div class="fgrid">
+        ${f("Published At",     ev.published_at)}
+        ${f("Hub Submission ID", ev.hub_submission_id)}
+      </div>
+    </div>
+
+    <!-- 8. Source attribution -->
     <div class="fsection">
       <div class="fsection-title">Source Attribution</div>
       <div class="fgrid">
@@ -1773,6 +1797,9 @@ function openEditEvent(id) {
   document.getElementById("ee_short_description").value    = ev.short_description || p.short_description_for_digital_signs || "";
   document.getElementById("ee_extended_description").value = ev.extended_description || p.extended_description_for_web_and_newsletter || "";
   document.getElementById("ee_artwork_url").value          = ev.artwork_url || p.artwork_upload_or_gallery || "";
+  document.getElementById("ee_accessibility_description").value = ev.accessibility_description || p.accessibility_description || "";
+  document.getElementById("ee_published_at").value         = ev.published_at || "";
+  document.getElementById("ee_hub_submission_id").value    = ev.hub_submission_id || "";
   document.getElementById("ee_reviewer_name").value        = "";
   document.getElementById("ee_review_note").value          = "";
   document.getElementById("editEventOverlay").classList.add("open");
@@ -1798,6 +1825,9 @@ async function saveEditEvent() {
     short_description:       document.getElementById("ee_short_description").value.trim() || null,
     extended_description:    document.getElementById("ee_extended_description").value.trim() || null,
     artwork_url:             document.getElementById("ee_artwork_url").value.trim() || null,
+    accessibility_description: document.getElementById("ee_accessibility_description").value.trim() || null,
+    published_at:            document.getElementById("ee_published_at").value.trim() || null,
+    hub_submission_id:       document.getElementById("ee_hub_submission_id").value.trim() || null,
     reviewer_name:           document.getElementById("ee_reviewer_name").value.trim() || null,
     review_note:             document.getElementById("ee_review_note").value.trim() || null
   };
@@ -1888,6 +1918,7 @@ function renderMetrics(metrics) {
   const avgChanged = accuracy.average_changed_fields || 0;
   const duplicateOverrides = accuracy.duplicate_overrides || 0;
   const baselineCoverage = accuracy.baseline_coverage || 0;
+  const automationLeverage = accuracy.automation_leverage || 0;
   const fieldAccuracy = accuracy.field_accuracy || [];
   const sourceRows = accuracy.by_source || [];
 
@@ -1911,6 +1942,11 @@ function renderMetrics(metrics) {
       <div class="metric-label">Human Correction Rate</div>
       <div class="metric-value" style="color:var(--warning)">${correctionRate}%</div>
       <div class="metric-sub">${accuracy.reviewed_with_corrections || 0} reviewed items changed</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Automation Leverage</div>
+      <div class="metric-value" style="color:var(--primary)">${automationLeverage}%</div>
+      <div class="metric-sub">percentage of total fields accepted as-is</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Avg Fields Changed</div>
@@ -1950,6 +1986,7 @@ function renderMetrics(metrics) {
     short_description: "Short Description",
     extended_description: "Extended Description",
     artwork_url: "Artwork",
+    accessibility_description: "Alt Text",
     is_duplicate: "Duplicate Flag",
     duplicate_match_url: "Duplicate Match URL",
     duplicate_reason: "Duplicate Reason",
